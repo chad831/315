@@ -1,9 +1,6 @@
 
 # Chad Benson and Nghia Nguyen
 # Lab 2 - Creating subroutines
- 
-# Desciption: 
-# 
 
 .data
 

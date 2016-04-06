@@ -68,5 +68,6 @@ loop:
 	lw $ra 0($sp)		# retore the ret address
 	addi $sp $sp 4    # stack is now has nothing
 	jr $ra 				
+   
 
 .end

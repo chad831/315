@@ -1,68 +1,38 @@
 
 # Chad Benson and Nghia Nguyen
 # Lab 2 - Creating subroutines
-# Adds two sets of 32 bit values to get a 64 bit value
+# Uses 32 bit value to print characters
 
 .data
-	ahi: .word 0x10000000
-	alo: .word 0x842A0000
-	bhi: .word 0x1CDA0000
-	blo: .word 0xA2410000
-	buff: .space 9 # storage for 9 bytes, less spaces
+   
+   # buff: .word 0, 0, 0  # option 2, storage for result, 12 bytes
+   buff: .space 9 # storage for 9 bytes, less spaces
    table: .byte 0x30, 0x31, 0x32, 0x33, 0x34, 0x35 0x36, 0x37, 0x38, 0x39, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46  # table of character values
 
 
 .text
 
 main:
-	# load ahi, alo, bhi, blo into arguments
-	lw $a0, ahi
-	lw $a1, alo
-	lw $a2, bhi
-	lw $a3, blo
-   
-	jal doubleAdd
 	
-	# print the upper
-	move $a0, $v0
-	la $t1 table # load address of table
+   la $t1 table # load address of table
    la $a1 buff  # load address of buffer
-	jal bintohex
+   li $a0 0x1A0B8F03 # test value
+ 
 	
-	# append \0 at the end
+	# call bintohex func
+   jal bintohex
+	  
+	# a1 will be at the last index in buffer when ret
 	sb $zero 0($a1)
    la $a0 buff
 	li $v0 4
 	syscall
-	
-	# print the lower
-	move $a0, $v1
-	la $t1 table # load address of table
-   la $a1 buff  # load address of buffer
-	jal bintohex
-	
-	# append \0 at the end
-	sb $zero 0($a1)
-   la $a0 buff
-	li $v0 4
-	syscall
-	
-	li $v0 10
-	syscall
 
-	
-doubleAdd:
+   li $v0 10 # halt program
+   syscall
 
-	addu $v1, $a1, $a3	# sum of 2 low
-	sltu $v0, $v1, $a1	# check if the sum is less than either 2 arguments
-								# and put the result 1 if carry 0 otherwise into v0
-	# add v0 with each high and get the final result
-	addu $v0, $v0, $a0 	
-	addu $v0, $v0, $a2
-	
-	j $ra
-	# Result will be saved in v0 (upper) and v1 (lower)
-	# function bintohex
+
+# function bintohex
 # a0 => value
 # a1 => buffer location
 # t1 => table
@@ -98,6 +68,5 @@ loop:
 	lw $ra 0($sp)		# retore the ret address
 	addi $sp $sp 4    # stack is now has nothing
 	jr $ra 				
-   
 
 .end
