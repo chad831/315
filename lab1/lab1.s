@@ -2,7 +2,7 @@
 # Chad Benson
 # Nghia Nguyen
 # 315
-#
+# lab 1
 .data
 
 list: .word 22 33 -10
