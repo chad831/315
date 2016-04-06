@@ -2,6 +2,7 @@
 # Chad Benson
 # Nghia Nguyen
 # 315
+#
 .data
 
 list: .word 22 33 -10
