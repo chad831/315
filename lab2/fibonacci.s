@@ -15,7 +15,7 @@ main:
    li $v0, 4			   #set print_string mode
 	syscall
 	
-	li $v0, 1			   #  read in int
+	li $v0, 5			   #  read in int
 	syscall
 	move $a0, $v0		   # store argument
    and $s0, $s0, $zero  # register to add returned values
