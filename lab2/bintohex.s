@@ -1,7 +1,7 @@
 
 # Chad Benson and Nghia Nguyen
 # Lab 2 - Creating subroutines
-# Uses 32 bit value to print characters
+# Function 1- Use a 32 bit value to print hex characters
 
 .data
    
@@ -9,9 +9,9 @@
    buff: .space 9 # storage for 9 bytes, less spaces
    table: .byte 0x30, 0x31, 0x32, 0x33, 0x34, 0x35 0x36, 0x37, 0x38, 0x39, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46  # table of character values
 
-
 .text
 
+###########################################
 main:
 	
    la $t1 table # load address of table
@@ -31,13 +31,14 @@ main:
    li $v0 10 # halt program
    syscall
 
-
+##############################################
 # function bintohex
+# function makes the following assumptions: 
 # a0 => value
 # a1 => buffer location
 # t1 => table
 # t5 => loop counter
-#
+# ther is no return value
 
 bintohex:
    addi $sp $sp -4 # build stack, ra, fp, vars, etc
@@ -69,5 +70,4 @@ loop:
 	addi $sp $sp 4    # stack is now has nothing
 	jr $ra 				
    
-
 .end

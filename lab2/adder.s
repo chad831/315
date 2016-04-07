@@ -1,7 +1,7 @@
 
 # Chad Benson and Nghia Nguyen
 # Lab 2 - Creating subroutines
-# Adds two sets of 32 bit values to get a 64 bit value
+# Function adds two sets of 32 bit values to get a 64 bit value
 
 .data
 	ahi: .word 0x10000000
@@ -11,9 +11,9 @@
 	buff: .space 9 # storage for 9 bytes, less spaces
    table: .byte 0x30, 0x31, 0x32, 0x33, 0x34, 0x35 0x36, 0x37, 0x38, 0x39, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46  # table of character values
 
-
 .text
 
+#####################################################
 main:
 	# load ahi, alo, bhi, blo into arguments
 	lw $a0, ahi
@@ -50,7 +50,10 @@ main:
 	li $v0 10
 	syscall
 
-	
+###################################################
+# function doubleAdd
+# assumes there will valid values in a0 - a3
+# return value placed in v0 and v1
 doubleAdd:
 
 	addu $v1, $a1, $a3	# sum of 2 low
@@ -99,5 +102,4 @@ loop:
 	addi $sp $sp 4    # stack is now has nothing
 	jr $ra 				
    
-
 .end

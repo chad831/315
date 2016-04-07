@@ -35,7 +35,7 @@ main:
 	syscall
 
 # function
-# Stack - Activation Record
+# Stack
 ################################
 # local t0, t1 <- top of stack
 # caller frame pointer   <- new frame pointer
@@ -78,7 +78,7 @@ Recursive:
 	addi $sp, $sp, 8	# pop the ret value and argument
 	
 	#passing argument n-2
-#	lw $a0, 12($fp)	#load the argument because $a0 changed
+	lw $a0, 12($fp)	#load the argument because $a0 changed
 	addi $a0, $a0, -2
 	jal fib
 	#getting return value
