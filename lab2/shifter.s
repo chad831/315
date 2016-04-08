@@ -9,27 +9,37 @@
 # 
 
 .data
-#   val: .word 0xE608F000
-#   val: .word 0b 1110 0110 0000 1000 1111 0000 0000 0000
-#   val: .word 0x6608C000
-   val: .word 0xC2008000
+
+   val1: .word 0x6608C000
+   val2: .word 0xC2008000
    inputMask: .word 0x19F70FFF
    shiftMask1: .word 0x0000F000  # used for bits 15 - 12
    shiftMask2: .word 0x00080000  # used for bit 19
    msg: .asciiz   "Sorry, format of input is not valid."
+   format: .asciiz "\n"
 
 .text
 
 ################################################
 main:
 
-   lw $a0, val    # load first input value
+   lw $a0, val1    # load first input value
    jal shifter
-
    move $a0, $v0  # load result to print
    li $v0, 1 
    syscall
- 
+
+   li $v0, 4
+   la $a0, format
+   syscall
+
+   lw $a0, val2   # load second input value
+   jal shifter
+   move $a0, $v0  # load result to print
+   li $v0, 1 
+   syscall
+
+
    li $v0 10
    syscall
 
@@ -54,14 +64,14 @@ validate:
    addi $sp, $sp, -4    
    sw $a0, 0($sp)
 
-
    lw $t1, inputMask       # load mask
    and $a0, $a0, $t1       # mod input to test format
    beq $a0, $zero, valid   # branch to valid if a0 is zero
    
-   lw $a0, msg             # if not valid, alert user, and halt program
+   la $a0, msg             # if not valid, alert user, and halt program
    li $v0, 4               # print error
    syscall
+
    li $v0, 10
    syscall
 
