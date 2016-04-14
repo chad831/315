@@ -2,11 +2,13 @@
  *
  * Nghia Nguyen and Chad Benson
  * Lab 3 - Floating Point Arithmetic
- * Functions 3, 4, 5, 6
+ * Functions 3, 4, 5, 6 in C
  *
  */
 
 #include <stdio.h>
+#define  TRUE 1
+#define  FALSE 0
 
 /* Function Declarations: */
 float single_float_add(float a, float b);
@@ -17,7 +19,6 @@ float compare(int a, int b);
 
 
 /* Functions */
-
 /* Function adds two float values together */
 
 float single_float_add(float a, float b)
@@ -27,9 +28,20 @@ float single_float_add(float a, float b)
 
    int base1 = (unsigned int) * (unsigned int*) &a;
    int base2 = (unsigned int) * (unsigned int*) &b;
+   int sign1, sign2, exp1, exp2, fract1, fract2, temp;
+   
+   /* store sign bits */
+   sign1 = base1 & 0x80000000;
+   sign2 = base2 & 0x80000000;
+
+   /* set exponents equal */
+   exp1 = base1 & 0x7f800000;
+   exp2 = base2 & 0x7f800000;
+   temp = compare(exp1, exp2); 
 
 
-      
+
+   
    printf("b1 float: %f \n", a);
    printf("b2 float: %f \n", b);
    printf("b1 int: %d \n", base1);
