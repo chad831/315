@@ -64,16 +64,20 @@ float single_float_add(float a, float b)
    else if(exp2 > exp1)
       fract1 = fract1 >> (exp2-exp1);
 
+   fract1 >>= 1;
+   fract2 >>= 1;
+   exp1 += 1;
+   exp2 += 1;
    total_fract = fract1 + fract2;
    //total_fract = total_fract &0x4ffffff;
    new_exp = exp1 >= exp2 ? exp1 : exp2;
 
-   if (fract1 + fract2 < 0)
+   if (fract1 + fract2 < 0 && sign1 != sign2)
       new_sign = 0x80000000;
    else
       new_sign = 0;
 
-      /*
+
    printf("b1 float: %f \n", a);
    printf("b2 float: %f \n", b);
    printf("b1 int: %.8x \n", base1);
@@ -86,7 +90,7 @@ float single_float_add(float a, float b)
    printf("New exp: %d\n", new_exp);
    printf("Sign 1: %.8x\n", sign1);
    printf("Sign 2: %.8x\n", sign2);
-   printf("New Sign: %.8x\n", new_sign);*/
+   printf("New Sign: %.8x\n", new_sign);
 
    return pack_ieee(new_sign, new_exp, total_fract);
 }
@@ -197,15 +201,18 @@ int main()
 
    float g, h, i;
    unsigned int k, j;
-   g = 2;
-   h = 5;
+   printf("Enter first number: ");
+   scanf("%f", &g);
+   printf("Enter the second number: ");
+   scanf("%f", &h);
+
    k = (unsigned int) * (unsigned int *) &g;
    //j = (unsigned int) g; ???????
 
-   single_float_subract(g, h);
+   single_float_add(g, h);
 
-   printf("Mutl: \n");
-   single_float_multiply(g,h);
+  // printf("Mutl: \n");
+  // single_float_multiply(g,h);
 
 //   printf("k: %f \n", i);
 
