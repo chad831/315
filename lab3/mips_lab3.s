@@ -9,7 +9,7 @@
 .data
 
    # data for unpack.s
-   bias: .word -127
+   bias: .word 127
    val: .word 0xB7594f00
 
    # data for bintohex
@@ -50,7 +50,7 @@ unpack:
    and $t1, $a0, $t3
    srl $t1, $t1, 23     # move exponent to lower bits 
    lw $t3, bias
-   add $t1, $t1, $t3    # substract bias to exponent
+   sub $t1, $t1, $t3    # substract bias to exponent
    li $t3, 0x00FF
    and $t1, $t1, $t3    # clear unintended bits 
 
@@ -59,8 +59,8 @@ unpack:
    lui $t3, 0x4000            
    add $t2, $t2, $t3          # add hidden one bit in
    beq $t0, $zero, unsigned   # if sign bit is unsigned, skip addin and negation
-   lui $t3, 0x8000
-   add $t2, $t2, $t3          # add sign bit in
+   #lui $t3, 0x8000
+  # add $t2, $t2, $t3          # add sign bit in
    neg $t2, $t2               # signed bit set, so negate # will this work?????????????????   
 
 unsigned:
@@ -76,7 +76,7 @@ unsigned:
 # Function Normalize 
 # assumes exponent and fraction in t1 and t2
 # t1 -> exponent
-# t2 -> fration
+# t2 -> fraction
 # t3 -> bit mask
 # t4 -> temp reg
 
@@ -103,6 +103,9 @@ loop2:                  # loop until significant bit is set
    sll $t2, $t2, 1      # shift fraction left
    addi $t1, $t1, -1     # decrement exponent (scale)
    j loop2
+	
+	#can we do this
+	#srlv $t2, $t2, $t1  #shift right t1 times
 
 done2:
 
