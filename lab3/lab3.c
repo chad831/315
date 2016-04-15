@@ -37,26 +37,28 @@ float single_float_add(float a, float b)
    /* set exponents equal */
    exp1 = base1 & 0x7f800000;
    exp2 = base2 & 0x7f800000;
+
    exp1 = exp1 >> 23;
    exp2 = exp2 >> 23;
    exp1 -= BIAS;
    exp2 -= BIAS;
+
    fract1 = base1 << 9;
    fract1 = fract1 >> 2;
    fract1 = fract1 & 0x3fffffff;
-    printf("fract1: %.8x\n", fract1);
 
    fract1 += 0x40000000;
    if (sign1 != 0)
-      fract1 = ~fract1 + 1;
+      fract1 = ~fract1 + 1; //fract1 = -fract1;
+
    fract2 = base2 << 9;
    fract2 = fract2 >> 2;
    fract2 = fract2 & 0x3fffffff;
-   printf("fract2: %.8x\n", fract2);
    fract2 += 0x40000000;
    if (sign2 != 0)
       fract2 = ~fract2 + 1;
   // temp = compare(exp1, exp2);
+
    if (exp1 > exp2)
       fract2 = fract2 >> (exp1-exp2);
    else if(exp2 > exp1)
@@ -66,15 +68,12 @@ float single_float_add(float a, float b)
    //total_fract = total_fract &0x4ffffff;
    new_exp = exp1 >= exp2 ? exp1 : exp2;
 
-   if(sign1 == sign2)
-      new_sign = sign1;
+   if (fract1 + fract2 < 0)
+      new_sign = 0x80000000;
    else
-   {
-      if (fract1 + fract2 < 0)
-         new_sign = sign1 < sign2 ? sign1 : sign2;
-      else
-         new_sign = 0;
-   }
+      new_sign = 0;
+
+      /*
    printf("b1 float: %f \n", a);
    printf("b2 float: %f \n", b);
    printf("b1 int: %.8x \n", base1);
@@ -87,8 +86,7 @@ float single_float_add(float a, float b)
    printf("New exp: %d\n", new_exp);
    printf("Sign 1: %.8x\n", sign1);
    printf("Sign 2: %.8x\n", sign2);
-   printf("New Sign: %.8x\n", new_sign);
-
+   printf("New Sign: %.8x\n", new_sign);*/
 
    return pack_ieee(new_sign, new_exp, total_fract);
 }
@@ -96,13 +94,53 @@ float single_float_add(float a, float b)
 /* Function subtracts two float values together */
 float single_float_subract(float a, float b)
 {
-   return -1.4;
+   return single_float_add(a,-b);
 }
 
 /* Function multiplys two float values together */
 float single_float_multiply(float a, float b)
 {
-   return -1.5;
+   if(a == 0) return b;
+   if(b == 0) return a;
+
+    int base1 = (unsigned int) * (unsigned int*) &a;
+    int base2 = (unsigned int) * (unsigned int*) &b;
+    int sign1, sign2, exp1, exp2, fract1, fract2;
+    int new_exp, new_sign;
+    long long total_fract;
+   /* store sign bits */
+   sign1 = base1 & 0x80000000;
+   sign2 = base2 & 0x80000000;
+
+   /* set exponents equal */
+   exp1 = base1 & 0x7f800000;
+   exp2 = base2 & 0x7f800000;
+
+   exp1 = exp1 >> 23;
+   exp2 = exp2 >> 23;
+   exp1 -= BIAS;
+   exp2 -= BIAS;
+
+   fract1 = base1 << 9;
+   fract1 = fract1 >> 2;
+   fract1 = fract1 & 0x3fffffff;
+
+   fract1 += 0x40000000;
+   if (sign1 != 0)
+      fract1 = ~fract1 + 1; //fract1 = -fract1;
+
+   fract2 = base2 << 9;
+   fract2 = fract2 >> 2;
+   fract2 = fract2 & 0x3fffffff;
+   fract2 += 0x40000000;
+   if (sign2 != 0)
+      fract2 = ~fract2 + 1;
+
+   new_exp = exp1 + exp2;
+   total_fract = (long long)fract1 * fract2;
+   new_sign = (sign1 + sign2) % 2;
+
+   return  pack_ieee(new_sign, new_exp, total_fract);
 }
 
 /* Function packs values into a floating point number */
@@ -110,8 +148,8 @@ float pack_ieee(int s,int e, int f) // float????
 {
    float num;
    int float_point = 0;
-   printf("\n\ninside\n");
 
+   /* Normalize */
    float_point = float_point | s;
    if  (s != 0)
       f = ~f + 1;
@@ -159,12 +197,15 @@ int main()
 
    float g, h, i;
    unsigned int k, j;
-   g = 1.25;
-   h = 2.75;
+   g = 2;
+   h = 5;
    k = (unsigned int) * (unsigned int *) &g;
    //j = (unsigned int) g; ???????
 
-   single_float_add(g, h);
+   single_float_subract(g, h);
+
+   printf("Mutl: \n");
+   single_float_multiply(g,h);
 
 //   printf("k: %f \n", i);
 
