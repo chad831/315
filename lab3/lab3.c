@@ -77,6 +77,8 @@ float single_float_add(float a, float b)
    else
       new_sign = 0;
 
+   if(new_sign != 0)
+      total_fract = -total_fract;
 
    printf("b1 float: %f \n", a);
    printf("b2 float: %f \n", b);
@@ -110,8 +112,7 @@ float single_float_multiply(float a, float b)
     int base1 = (unsigned int) * (unsigned int*) &a;
     int base2 = (unsigned int) * (unsigned int*) &b;
     int sign1, sign2, exp1, exp2, fract1, fract2;
-    int new_exp, new_sign;
-    long long total_fract;
+    int new_exp, new_sign,total_fract;
    /* store sign bits */
    sign1 = base1 & 0x80000000;
    sign2 = base2 & 0x80000000;
@@ -128,21 +129,18 @@ float single_float_multiply(float a, float b)
    fract1 = base1 << 9;
    fract1 = fract1 >> 2;
    fract1 = fract1 & 0x3fffffff;
-
    fract1 += 0x40000000;
-   if (sign1 != 0)
-      fract1 = ~fract1 + 1; //fract1 = -fract1;
 
    fract2 = base2 << 9;
    fract2 = fract2 >> 2;
    fract2 = fract2 & 0x3fffffff;
    fract2 += 0x40000000;
-   if (sign2 != 0)
-      fract2 = ~fract2 + 1;
 
-   new_exp = exp1 + exp2;
-   total_fract = (long long)fract1 * fract2;
-   new_sign = (sign1 + sign2) % 2;
+   fract1 >>= 16;
+   fract2 >>= 16;
+   new_exp = exp1 + exp2 + 2;
+   total_fract = fract1 * fract2;
+   new_sign = sign1 != sign2 ? 0x80000000 : 0;
 
    return  pack_ieee(new_sign, new_exp, total_fract);
 }
@@ -155,8 +153,7 @@ float pack_ieee(int s,int e, int f) // float????
 
    /* Normalize */
    float_point = float_point | s;
-   if  (s != 0)
-      f = ~f + 1;
+
    if (f & 0x80000000)
    {
       f = f >> 1;
@@ -199,7 +196,7 @@ float compare(int a, int b)
 int main()
 {
 
-   float g, h, i;
+   float g, h;
    unsigned int k, j;
    printf("Enter first number: ");
    scanf("%f", &g);
@@ -207,19 +204,12 @@ int main()
    scanf("%f", &h);
 
    k = (unsigned int) * (unsigned int *) &g;
-   //j = (unsigned int) g; ???????
 
    single_float_add(g, h);
 
-  // printf("Mutl: \n");
-  // single_float_multiply(g,h);
+    printf("Mutl: \n");
+    single_float_multiply(g,h);
 
-//   printf("k: %f \n", i);
-
-
-   //printf("k: %08X \n", k);
- //  printf("k: %d \n", k);
- //  printf("k: %08X \n", k);
 
    return 0;
 }
