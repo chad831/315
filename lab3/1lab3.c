@@ -16,6 +16,7 @@ float single_float_subract(float a, float b);
 float single_float_multiply(float a, float b);
 float pack_ieee(int s,int e,int f);
 
+
 /* Functions */
 /* Function adds two float values together */
 
@@ -97,8 +98,7 @@ float single_float_multiply(float a, float b)
    int base1 = (unsigned int) * (unsigned int*) &a;
    int base2 = (unsigned int) * (unsigned int*) &b;
    int sign1, sign2, exp1, exp2, fract1, fract2;
-   int new_exp, new_sign;
-   long temp, total_fract;
+   int new_exp, new_sign,total_fract;
    /* store sign bits */
    sign1 = base1 & 0x80000000;
    sign2 = base2 & 0x80000000;
@@ -125,8 +125,6 @@ float single_float_multiply(float a, float b)
    fract1 >>= 16;
    fract2 >>= 16;
    new_exp = exp1 + exp2 + 2;
-  // temp = (long) fract1 * (long)fract2;
-  // total_fract = (int) temp >> 31;
    total_fract = fract1 * fract2;
    new_sign = sign1 != sign2 ? 0x80000000 : 0;
 
@@ -173,6 +171,13 @@ float pack_ieee(int s,int e, int f)
    num = * (float *) &float_point;
    return num;
 }
+
+/* returns the smaller of two floats */
+float compare(int a, int b)
+{
+   return a <= b ? a:b;
+}
+
 
 int main()
 {

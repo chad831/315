@@ -49,7 +49,6 @@ bintohex:
    addi $sp $sp -4 # save temp register $t0
 	sw $t0 0($sp)
 	
-	
    li $t5 8 			# set counter to 8
 loop:
    srl $t0 $a0 28 	# get the first 4 bits of a0 into t0

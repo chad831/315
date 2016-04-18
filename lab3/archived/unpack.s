@@ -1,9 +1,7 @@
 
-
 # Nghia Nguyen
 # Chad Benson
 # Lab 3
-#
 
 .data
 
@@ -13,9 +11,8 @@
 
 main:
 
- lw $a0, val
- jal unpack
-
+   lw $a0, val
+   jal unpack
 
    li $v0, 10
    syscall
@@ -41,7 +38,6 @@ unpack:
    and $t1, $a0, $t3
    srl $t1, $t1, 23     # shift bits to lower 16 ??????????????????????????????
 
-
    beq $t0, $zero, unsigned   # sign bit is unsigned
 
 signed:
@@ -61,7 +57,7 @@ unsigned:
    add $t2, $t2, $t3    
 
 done:
-
+                                                                                                                     
    lw $fp, 0($sp)    # pop stack
    addiu $sp, $sp, 4   
    lw $ra, 0($sp)
