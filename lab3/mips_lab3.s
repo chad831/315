@@ -243,21 +243,22 @@ normalize:
    move $t1, $a0           # load arguments
    move $t2, $a1 
    
-   sll $t2, $t2, 10         # remove hidden one from fraction 
-   srl $t2, $t2, 10
    beq $t2, $zero, done2    # special case: fraction is zero
 
-   lui $t3, 0x0040          # mask to test sig bit
-loop2:                      # loop until significant bit is set
-   
-   and $t2, $t2, $t3
-   beq $t2, $zero, done2
+   lui $t3, 0x8000          # mask to test 31 bit of fraction
+	and $t3, $t2, $t3
+	beq $t3, $zero, CheckBit30
+	srl $t2, $t2, 1			# shift fract 1 bit to the right
+	addi $t1, $t1, 1
+	j done2
+	
+CheckBit30:
+	lui $t3, 0x4000	      # loop until bit 30 is set
+   and $t3, $t2, $t3
+   bne $t3, $zero, done2
    sll $t2, $t2, 1         # shift fraction left
    addi $t1, $t1, -1       # decrement exponent (scale)
-   j loop2
-	
-	#can we do this
-	#srlv $t2, $t2, $t1  #shift right t1 times
+   j CheckBit30
 
 done2:
 
@@ -265,9 +266,7 @@ done2:
    addiu $sp, $sp, 4   
    lw $ra, 0($sp)
    addiu $sp, $sp, 4   
-   move $v0, $t1        # ret exp
-   lui $t3, 0x0080      # readd hidden one ???????????????????????????????????????
-   add $t2, $t2, $t3    
+   move $v0, $t1        # ret exp   
    move $v1, $t2        # ret fration 
 
    jr $ra

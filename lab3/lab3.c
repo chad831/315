@@ -125,8 +125,6 @@ float single_float_multiply(float a, float b)
    fract1 >>= 16;
    fract2 >>= 16;
    new_exp = exp1 + exp2 + 2;
-  // temp = (long) fract1 * (long)fract2;
-  // total_fract = (int) temp >> 31;
    total_fract = fract1 * fract2;
    new_sign = sign1 != sign2 ? 0x80000000 : 0;
 
