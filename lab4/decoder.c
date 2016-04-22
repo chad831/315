@@ -7,18 +7,13 @@
  * starter code provided
  *
  */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "mips_asm_header.h"
-
 typedef unsigned int MIPS, *MIPS_PTR;
-
 MB_HDR mb_hdr;		/* Header area */
 MIPS mem[4096];	/* Memory space */	
-
-
 
 /* Function Declarations */
 int checkIJ(int n);
@@ -27,11 +22,12 @@ int getrs(int n);
 int getrt(int n);
 int getrd(int n);
 int getshift(int n);
-int getimm(int n);
+int getimm8(int n);
+int getimm16(int n);
 int geteff(int n, int i);
 void decodeR(int n, int opc, int funct, int i);
 void decodeIJ(int n, int opc,  int i);
-
+/*************************************** MAIN ******************************/
 main()
 {
    // Vars
@@ -44,12 +40,15 @@ main()
    unsigned char *bp;      /* byte pointer */
    unsigned int *wp;       /* word pointer */
    unsigned int wordval;    /* instruction value */
-   // printf("Enter a mips file to decode: ");
-   // scanf("%s", filename);
+
+   /************************************** I / O ******************************/
+
+    printf("Enter a mips file to decode: "); /* prompt user for a file */
+    scanf("%s", filename);
    /* format the MIPS Binary header */
 
-   //fd = fopen(filename, "rb");
-   fd = fopen("testcase1.mb", "rb");
+   fd = fopen(filename, "rb");
+   /* fd = fopen("testcase1.mb", "rb"); */
    if (fd == NULL) { printf("\nCouldn't load test case - quitting.\n"); exit(99); }
 
    memp = 0;		/* This is the memory pointer, a byte offset */
@@ -72,24 +71,13 @@ main()
 
    fclose(fd);
 
-   /*
-    * INstructions for testcase1
-    * 1. 0000 1100 0001 0000 0000 0000 0000 1100
-    * 2. 0011 0100 0000 0010 0000 0000 0000 1010
-    * 3. 0000 0000 0000 0000 0000 0000 0000 1010
-    * 4. 0000 0010 0001 0001 0100 0000 0010 0110
-    * 5. 0011 0001 0000 0101 0000 0000 0000 0010
-    * 6  0001 0000 1000 1000 1111 1111 1111 1110
-    * 7. 0000 1000 0001 0000 0000 0000 0001 0000
-    * 8. 0000 0011 1110 0000 0000 0000 0000 1000 
-    *
-    */
 
-   /* For loop algorithm decodes and prints one instruction at a time */
+   /************************* Main Program Loop ************************************/
+
    for (i = 0; i<memp; i+=4)	/* i contains byte offset addresses */
    {
-      printf("\nInstruction@%08X : %08X\n", i, mem[i/4]); /* print instruction */
-      opc = mem[i/4] >> 27;   /* get opcode */
+      printf("Instruction@%08X : %08X\n", i, mem[i/4]); /* print instruction */
+      opc = mem[i/4] >> 26;   /* get opcode */
       if(opc == 0)            /* check if R type instr */
       {
          funct = getFunct(mem[i/4]);
@@ -100,8 +88,8 @@ main()
          type = checkIJ(opc);  /* check if J or I type instr */
          if(type == 0)
          {
-         /* Instruction was not found */
-         printf("Instruction@%08X : %08X is not a valid instruction! \n", i, mem[i/4]);
+            /* Instruction was not found */
+            printf("Instruction@%08X : %08X is not a valid instruction! \n", i, mem[i/4]);
          } 
          else
          {
@@ -110,17 +98,15 @@ main()
       }
       else        {
          /* This case should not happen */
-         printf("An error occured decoding instruction! \n");
+         printf("An error occured in decoding instruction! \n");
       }
    }
    exit(0);
 }
-
-
-
 /* Function checkIJ 
- * Returns an function type if valid
+ * Returns a function type if valid, for R type instructions
  * Otherwise returns zero
+ * Assumes an integer equal to opcode 
  */
 int checkIJ(int n)
 {
@@ -145,9 +131,9 @@ int checkIJ(int n)
    if(n == 5)     /* bne */
       return 5;
    if(n == 10)     /* slti */
-      return ;
+      return 10;
    if(n == 11)     /* sltiu */
-      return ;
+      return 11;
    if(n == 15)     /* lui */
       return 15;
    if(n == 32)     /* load byte*/
@@ -168,69 +154,72 @@ int checkIJ(int n)
       return 43;
    return 0;      /* was not I or J type */
 }
-
 /* Function getFunct 
- * return function value for R type instru
+ * returns function value for R type instru
+ * Assume integer instruction
  */
 int getFunct(int n)
 {
    n &= 0x3F; 
-   /*printf("funct: %08X \n", n); */
    return n;
 }
-
 /* Function DecodeR 
  * DecodeR decodes and prints R type instruction 
+ * Assumes integer instruction, opcode, function value and PC
  */
 void decodeR(int n, int opc, int funct, int i)
 {
-
-   if(funct == 0x20)    /* add */
+   if(n == 0x000000C)   /* syscall case */
+   {
+      printf("Special Instruction: Syscall \n \n");
+      return;
+   }
+   else if(funct == 0x20)    /* add */
    {
       printf("Instruction: add, Type: R, Opc: 00000, Funct: 0x20 \n"  
-            "reg rs: %d, reg rt: %d, reg rd: %d \n \n",
+            "reg rs: %d, reg rt: %d, reg rd: %d \n",
             getrs(n), getrt(n), getrd(n));
       return;
    }
    else if(funct == 0x21)    /* addu */
    {
       printf("Instruction: add unsigned, Type: R, Opc: 00000, Funct: 0x21 \n"  
-            "reg rs: %d, reg rt: %d, reg rd: %d \n \n",
+            "reg rs: %d, reg rt: %d, reg rd: %d \n",
             getrs(n), getrt(n), getrd(n));
       return;
    }
    else if(funct == 0x22)  /* subtract */
    {
       printf("Instruction: subtract, Type: R, Opc: 00000, Funct: 0x22 \n"  
-            "reg rs: %d, reg rt: %d, reg rd: %d \n \n",
+            "reg rs: %d, reg rt: %d, reg rd: %d \n",
             getrs(n), getrt(n), getrd(n));
       return;
    }
    else if(funct == 0x23) /* subtract unsigned */
    {
       printf("Instruction: subtract unsigned, Type: R, Opc: 00000, Funct: 0x23 \n"  
-            "reg rs: %d, reg rt: %d, reg rd: %d \n \n",
+            "reg rs: %d, reg rt: %d, reg rd: %d \n",
             getrs(n), getrt(n), getrd(n));
       return;
    }
    else if(funct == 0x24) /* and */
    {
       printf("Instruction: and, Type: R, Opc: 00000, Funct: 0x24 \n"  
-            "reg rs: %d, reg rt: %d, reg rd: %d \n \n",
+            "reg rs: %d, reg rt: %d, reg rd: %d \n",
             getrs(n), getrt(n), getrd(n));
       return;
    }
    else if(funct == 0x27) /* nor */
    {
       printf("Instruction: nor, Type: R, Opc: 00000, Funct: 0x27 \n"  
-            "reg rs: %d, reg rt: %d, reg rd: %d \n \n",
+            "reg rs: %d, reg rt: %d, reg rd: %d \n",
             getrs(n), getrt(n), getrd(n));
       return;
    }
    else if(funct == 0x25) /* or */
    {
       printf("Instruction: or, Type: R, Opc: 00000, Funct: 0x25 \n"  
-            "reg rs: %d, reg rt: %d, reg rd: %d \n \n",
+            "reg rs: %d, reg rt: %d, reg rd: %d \n",
             getrs(n), getrt(n), getrd(n));
       return;
    }
@@ -245,7 +234,7 @@ void decodeR(int n, int opc, int funct, int i)
    {
       printf("Instruction: sll (shift left logical), Type: R, Opc: 00000, Funct: 0x00 \n"  
             "reg reg rt: %d, reg rd: %d \n"
-            "Shift amount: %d \n \n",
+            "Shift amount: %d  \n",
             getrt(n), getrd(n), getshift(n));
       return;
    }
@@ -253,7 +242,7 @@ void decodeR(int n, int opc, int funct, int i)
    {
       printf("Instruction: srl (shift right logical), Type: R, Opc: 00000, Funct: 0x02 \n"  
             "reg rt: %d, reg rd: %d \n"
-            "Shift amount: %d \n \n",
+            "Shift amount: %d  \n",
             getrt(n), getrd(n), getshift(n));
       return;
    }
@@ -261,7 +250,7 @@ void decodeR(int n, int opc, int funct, int i)
    {
       printf("Instruction: sra (shift right arithmetic), Type: R, Opc: 00000, Funct: 0x03 \n"  
             "reg rt: %d, reg rd: %d \n"
-            "Shift amount: %d \n \n",
+            "Shift amount: %d  \n",
             getrt(n), getrd(n), getshift(n));
       return;
    }
@@ -269,15 +258,15 @@ void decodeR(int n, int opc, int funct, int i)
    {
       printf("Instruction: sra (shift left logical variable), Type: R, Opc: 00000, Funct: 0x04 \n"  
             "reg rs (holds shift amount): %d, reg rt (the register to be shifted): %d, reg rd: %d \n"
-            "Shift amount: %d \n \n",
-            getrs(n), getrt(n), getrd(n), 7);     /* how do you get the shift amount?? */
+            "Shift amount: %d  \n",
+            getrs(n), getrt(n), getrd(n), 7);     /* how do you get the shift amount?? */ sldkjkfjdlkffjjsdlkjfldsjfklskdflkjdskjfjlkl 
       return;
    }
    else if(funct == 0x06) /* srlv */
    {
       printf("Instruction: srlv (shift right logical variable), Type: R, Opc: 00000, Funct: 0x06 \n"  
             "reg rs (holds shift amount): %d, reg rt (the register to be shifted): %d, reg rd: %d \n"
-            "Shift amount: %d \n \n",
+            "Shift amount: %d  \n",
             getrs(n), getrt(n), getrd(n), 7);     /* how do you get the shift amount??? */
       return;
    }
@@ -285,77 +274,82 @@ void decodeR(int n, int opc, int funct, int i)
    {
       printf("Instruction: srlv (shift right arithmetic variable), Type: R, Opc: 00000, Funct: 0x07 \n"  
             "reg rs (holds shift amount): %d, reg rt (the register to be shifted): %d, reg rd: %d \n"
-            "Shift amount: %d \n \n",
+            "Shift amount: %d \n",
             getrs(n), getrt(n), getrd(n), 7);     /* how do you get the shift amount??? */
       return;
    }
    else if(funct == 0x2A) /* slt */
    {
-     printf("Instruction: slt (set less than), Type: R, Opc: 00000, Funct: 0x2A \n"  
-            "reg rs: %d, reg rt: %d, reg rd: %d \n \n",
+      printf("Instruction: slt (set less than), Type: R, Opc: 00000, Funct: 0x2A \n"  
+            "reg rs: %d, reg rt: %d, reg rd: %d \n",
             getrs(n), getrt(n), getrd(n));
       return;
    }
    else if(funct == 0x2B) /* sltu */
    {
-     printf("Instruction: slt (set less than unsigned), Opc: 00000, Type: R, Funct: 0x2B \n"  
-            "reg rs: %d, reg rt: %d, reg rd: %d \n \n",
+      printf("Instruction: slt (set less than unsigned), Opc: 00000, Type: R, Funct: 0x2B \n"  
+            "reg rs: %d, reg rt: %d, reg rd: %d \n",
             getrs(n), getrt(n), getrd(n));
       return;
    }
    else if(funct == 0x08) /* jump */
    {
-     printf("Instruction: jr (jump register), Type: R, Opc: 00000, Funct: 0x08 \n"  
-            "Set PC equal to reg rs: %d \n \n",
+      printf("Instruction: jr (jump register), Type: R, Opc: 00000, Funct: 0x08 \n"  
+            "Set PC equal to reg rs: %d \n",
             getrs(n));
       return;
    }
    else if(funct == 0x09) /* jalr */
    {
-     printf("Instruction: jalr (jump and link register), Type: R, Opc: 00000, Funct: 0x08 \n"  
-            "Set PC equal to reg rs: %d and set $ra to PC + 4; \n \n",
+      printf("Instruction: jalr (jump and link register), Type: R, Opc: 00000, Funct: 0x08 \n"  
+            "Set PC equal to reg rs: %d and set $ra to PC + 4; \n",
             getrs(n));
       return;
    }
    else
    {
-      printf("Instruction@%08X : %08X is not a valid instruction! \n \n", i, n);
+      printf("Instruction@%08X : %08X is not a valid instruction! \n", i, n);
    }
 }
-
-
 /* Function DecodeIJ
  * Decodes and prints I or J type if valid
  */
 void decodeIJ(int n, int opc, int i)
 {
-   if(opc == 0x02)    /* j (jump) */
+   if(opc == 0x02 || opc == 0x03)    /* j or jal  */
    {
-      printf("Instruction: addi, Type: J, Opc: 02 \n"); 
-      return;
-
+      int temp = n;
+      n &= 0xF0000000; /* save PC */
+      temp &= 0x0FFFFFFF; /* obtain 26 address*/
+      temp <<= 2;             /* multiply by 4 */
+      n += temp;              /* effective address */
+      if(opc == 0x02)    
+      {                    
+         printf("Instruction: jump, Type: J, Opc: 02 \n" 
+               "reg rt: %d, reg rs: %d, effective address %08X \n \n",
+               getrs(n), getrt(n), n); 
+         return;
+      }
+      else 
+      {
+         printf("Instruction: jump and link, Type: J, Opc: 0x03 \n" 
+               "reg rt: %d, reg rs: %d, effective address %08X \n \n",
+               getrs(n), getrt(n), n); 
+         return;
+      }
    }
-   else if(opc == 0x03)    /* jal (jump) */
-   {
-      printf("Instruction: addi, Type: J, Opc: 0x03 \n"); 
-
-      return;
-
-
-   }
-
    else if(opc == 0x08)    /* addi */
    {
       printf("Instruction: addi, Type: I, Opc: 0x08 \n"  
             "reg rt: %d, reg rs: %d, sign ext immediate value %08X \n \n",
-            getrs(n), getrt(n), getimm(n));
+            getrs(n), getrt(n), getimm16(n));
       return;
    }
    else if(opc == 0x09)    /* addi */
    {
       printf("Instruction: addiu, Type: I, Opc: 0x09 \n"  
             "reg rt: %d, reg rs: %d, sign ext immediate value %08X \n \n",
-            getrs(n), getrt(n), getimm(n));
+            getrs(n), getrt(n), getimm16(n));
       return;
    }
    else if(opc == 0x0C)    /* andi */
@@ -383,68 +377,116 @@ void decodeIJ(int n, int opc, int i)
    {
       printf("Instruction: slti, Type: I, Opc: 0x0A \n"  
             "reg rt: %d, reg rs: %d, sign ext immediate value %08X \n \n",
-            getrs(n), getrt(n), getimm(n));
+            getrs(n), getrt(n), getimm16(n));
       return;
    }
    else if(opc == 0x0B)    /* sltiu */
    {
       printf("Instruction: sltiu, Type: I, Opc: 0x0B \n"  
             "reg rt: %d, reg rs: %d, sign ext immediate value %08X \n \n",
-            getrs(n), getrt(n), getimm(n));
+            getrs(n), getrt(n), getimm16(n));
       return;
    }
    else if(opc == 0x04)    /* beq */
    {
       printf("Instruction: beq, Type: I, Opc: 0x04 \n"  
-            "reg rt: %d, reg rs: %d, %08X \n \n",
+            "reg rt: %d, reg rs: %d, Effective address: %08X \n \n",
             getrs(n), getrt(n), geteff(n, i));    
       return;
    }
-    else if(opc == 0x05)    /* bne */
+   else if(opc == 0x05)    /* bne */
    {
       printf("Instruction: bne, Type: I, Opc: 0x05 \n"  
-            "reg rt: %d, reg rs: %d, %08X \n \n",
+            "reg rt: %d, reg rs: %d, Effective address: %08X \n \n",
             getrs(n), getrt(n), geteff(n, i));    
       return;
    }
-    else if(opc == 0x20)    /* load byte */
+   else if(opc == 0x20)    /* lb */
    {
-      printf("Instruction: load byte, Type: I, Opc: 0x20 \n"  
+      printf("Instruction: lb, Type: I, Opc: 0x20 \n"  
             "reg rt: %d, reg rs: %d, %08X \n \n",
-            getrs(n), getrt(n));    
+            getrs(n), getrt(n), getimm8(n));    
       return;
    }
-    else if(opc == 0x24)    /* load byte */
+   else if(opc == 0x24)    /* lbu */
    {
-      printf("Instruction: load byte, Type: I, Opc: 0x20 \n"  
+      printf("Instruction: lbu, Type: I, Opc: 0x24 \n"  
             "reg rt: %d, reg rs: %d, %08X \n \n",
-            getrs(n), getrt(n));    
+            getrs(n), getrt(n), n & 0x000000FF);    
       return;
    }
-    else if(opc == 0x20)    /* load byte */
+   else if(opc == 0x21)    /* lh */
    {
-      printf("Instruction: load byte, Type: I, Opc: 0x20 \n"  
+      printf("Instruction: lh, Type: I, Opc: 0x21 \n"  
             "reg rt: %d, reg rs: %d, %08X \n \n",
-            getrs(n), getrt(n));    
+            getrs(n), getrt(n), getimm16(n));    
       return;
    }
-    else if(opc == 0x20)    /* load byte */
+   else if(opc == 0x21)    /* lhu */
    {
-      printf("Instruction: load byte, Type: I, Opc: 0x20 \n"  
+      printf("Instruction: lhu, Type: I, Opc: 0x21 \n"  
             "reg rt: %d, reg rs: %d, %08X \n \n",
-            getrs(n), getrt(n));    
+            getrs(n), getrt(n), n & 0x0000FFFF);    
       return;
    }
-
-  else
+   else if(opc == 0x0F)    /* lui */
+   {
+      printf("Instruction: lui, Type: I, Opc: 0x21 \n"  
+            "reg rt: %d, reg rs: %d, %08X \n \n",
+            getrs(n), getrt(n), n << 16);    
+      return;
+   }
+   else if(opc == 0x23)    /* lw */
+   {
+      printf("Instruction: lw, Type: I, Opc: 0x23 \n"  
+            "reg rt: %d, reg rs: %d, %08X \n \n",
+            getrs(n), getrt(n), getimm16(n));    
+      return;
+   }
+   else if(opc == 0x28)    /* sb */
+   {
+      printf("Instruction: lw, Type: I, Opc: 0x28 \n"  
+            "reg rt: %d, reg rs: %d, %08X \n \n",
+            getrs(n), getrt(n), getimm8(n));    
+      return;
+   }
+   else if(opc == 0x29)    /* sh */
+   {
+      printf("Instruction: lw, Type: I, Opc: 0x29 \n"  
+            "reg rt: %d, reg rs: %d, %08X \n \n",
+            getrs(n), getrt(n), getimm16(n));    
+      return;
+   }
+   else if(opc == 0x2B)    /* sh */
+   {
+      printf("Instruction: lw, Type: I, Opc: 0x2B \n"  
+            "reg rt: %d, reg rs: %d, %08X \n \n",
+            getrs(n), getrt(n), getimm16(n));    
+      return;
+   }
+   else
    {
       printf("Instruction@%08X : %08X is not a valid instruction! \n \n", i, n);
       return;
    }
 }
-
-/* Function getimm */
-int getimm(int n)
+/* Function getimm8 - get immediate byte sign ext*/
+int getimm8(int n)
+{
+   int extBit, temp;
+   extBit = n & 0x00000080;
+   extBit >>= 7;
+   if(extBit) /* sign extend if 7th bit is set */
+   {
+      temp = n & 0x000000FF; 
+      return temp += 0xFFFFFF00;
+   } else   /* zero sign extend */
+   {
+      return n &= 0x000000FF;
+   }
+}
+/* Function getimm16 - get immediate halfword sign ext */
+int getimm16(int n)
 {
    int extBit, temp;
    extBit = n & 0x00008000;
@@ -458,12 +500,11 @@ int getimm(int n)
       return n &= 0x0000FFFF;
    }
 }
-
 /*Function geteff returns effective address */
 int geteff(int n, int i)
 {
    i += 4;  /* advance PC */
-   n = getimm(n); /* get immediate value (might be sign extended) */
+   n = getimm16(n); /* get immediate value (might be sign extended) */
    n <<= 2;       /* word align the value */
    return n + i;  /* add PC to Branch Address */
 }
