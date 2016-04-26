@@ -3,8 +3,8 @@
  * Nghia Nguyen
  *
  * 315
- * lab4 - mips decoder
- * starter code provided
+ * lab5 - mips simulator 
+ * code reused from lab 4 
  *
  */
 #include <stdio.h>
