@@ -23,9 +23,9 @@ char* table[32] = {"$zero", "$at", "$v0", "$v1", "$a0", "$a1", "$a2", "$a3", "$t
 typedef struct mipsSim 
 {
    unsigned int regs[32]; /* sim mips registers */
-   int simMem[2][32768];  /* sim memory, row 0 -> PC, row 1 -> instruction */
+   //   int simMem[2][32768];  /* sim memory, row 0 -> PC, row 1 -> instruction */
    int pcValue;   /* program counter */
-   int instrValue;   /* instruction */
+   int *memp;   /* instruction */
    int numOfInstr;   /* number of instructions in program */
    int numOfRWs;  /* number of read and writes in the program */
 }  MIPS_SIM;
@@ -45,26 +45,27 @@ int geteff(int n, int i);
 void decodeR(int n, int opc, int funct, int i);
 void decodeIJ(int n, int opc,  int i);
 /* Functs for running simulator */
-int promtp();
+int prompt();
 void initProgram();
 
 /*************************************** MAIN ******************************/
 int main()
 {
-   int run = 1;         /* loop flag value */
+   int run = 2;         /* loop flag value */
+   MIPS_SIM* sim = malloc(sizeof(MIPS_SIM)); /* init sim structure */
+   sim->pcValue = BASE; /* Set PC value */
+   initProgram(); /* prompt user for file and read in mips program to buffer */
    do
-   {
-
-      MIPS_SIM* sim = malloc(sizeof(MIPS_SIM)); /* init sim structure */
-      sim->pcValue = BASE; /* Set PC value */
-      initProgram(); /* prompt user for file and read in mips program to buffer */
-
-      run = prompt();   /* prompt user for command */
-            
+   {  
+      if(run == 2)
+         run = prompt();   /* prompt user for command */
 
 
-      free(sim);
-   } while(run != 0);
+
+
+   } while(run != 0 && sim->regs[2] != 10);  /* run until user quits or $v0 is 10 */
+
+   free(sim);
    return 0;
 
 }  /* End Main */
