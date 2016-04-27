@@ -11,32 +11,18 @@
 #include <stdlib.h>
 #include <string.h>
 #include "mips_asm_header.h"
-
-#define BASE   0x40000000
 typedef unsigned int MIPS, *MIPS_PTR;
 MB_HDR mb_hdr;		/* Header area */
 MIPS mem[4096];	/* Memory space */
 char* table[32] = {"$zero", "$at", "$v0", "$v1", "$a0", "$a1", "$a2", "$a3", "$t0", "$t1", "$t2", "$t3", "$t4",
-   "$t5", "$t6", "$t7", "$s0", "$s1", "$s2", "$s3", "$s4", "$s5", "$s6", "$s7", "$t8", "$t9",
-   "$k0", "$k1", "$gp","$sp", "$fp", "$ra"};
-
-typedef struct mipsSim 
-{
-   unsigned int regs[32]; /* sim mips registers */
-   int simMem[2][32768];  /* sim memory, row 0 -> PC, row 1 -> instruction */
-   int pcValue;   /* program counter */
-   int instrValue;   /* instruction */
-   int numOfInstr;   /* number of instructions in program */
-   int numOfRWs;  /* number of read and writes in the program */
-}  MIPS_SIM;
-
+                     "$t5", "$t6", "$t7", "$s0", "$s1", "$s2", "$s3", "$s4", "$s5", "$s6", "$s7", "$t8", "$t9",
+                     "$k0", "$k1", "$gp","$sp", "$fp", "$ra"};
 
 /* Function Declarations */
-/* Functs for decoding instructions */
 int checkIJ(int n);
 int getFunct(int n);
 int getrs(int n);
-int getrt(int n);       
+int getrt(int n);
 int getrd(int n);
 int getshift(int n);
 int getimm8(int n);
@@ -44,54 +30,10 @@ int getimm16(int n);
 int geteff(int n, int i);
 void decodeR(int n, int opc, int funct, int i);
 void decodeIJ(int n, int opc,  int i);
-/* Functs for running simulator */
-int promtp();
-void initProgram();
-
 /*************************************** MAIN ******************************/
 int main()
 {
-   int run = 1;         /* loop flag value */
-   do
-   {
-
-      MIPS_SIM* sim = malloc(sizeof(MIPS_SIM)); /* init sim structure */
-      sim->pcValue = BASE; /* Set PC value */
-      initProgram(); /* prompt user for file and read in mips program to buffer */
-
-      run = prompt();   /* prompt user for command */
-            
-
-
-      free(sim);
-   } while(run != 0);
-   return 0;
-
-}  /* End Main */
-
-/* Function prompt */
-int prompt()
-{
-   int val;
-   printf(" \n ******* Welcome to our 315 MIPS simulator: *******\n"
-         " enter 1 to run program \n"
-         " or enter 2 to step through program \n"
-         " or enter 0 to exit ");
-
-   scanf("%d", &val);
-   return val;
-}
-
-
-/* Funct initProgram prompts user for file and reads into a buffer */
-void initProgram()
-{
-   /* Function load program 
-    * Prompts and reads mips program
-    * from user given filename
-    */
-
-   /* Vars */
+   // Vars
    FILE *fd;               /* points to a file */
    int n;                  /* for reading instructions */
    int memp;
@@ -100,8 +42,8 @@ void initProgram()
    char filename[20];      /* for file name */
    /************************************** I / O ******************************/
 
-   printf("Enter a mips file to decode: "); /* prompt user for a file */
-   scanf("%s", filename);
+    printf("Enter a mips file to decode: "); /* prompt user for a file */
+    scanf("%s", filename);
    /* format the MIPS Binary header */
 
    fd = fopen(filename, "rb");
@@ -129,6 +71,7 @@ void initProgram()
    fclose(fd);
 
 
+   /************************* Main Program Loop ************************************/
 
 
    for (i = 0; i<memp; i+=4)	/* i contains byte offset addresses */
@@ -158,17 +101,8 @@ void initProgram()
          printf("An error occured in decoding instruction! \n");
       }
    }
-
-
-
-   return;
+   return 0;
 }
-
-
-
-
-
-
 /* Function checkIJ
  * Returns a function type if valid, for R type instructions
  * Otherwise returns zero
