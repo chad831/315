@@ -12,7 +12,7 @@
 #include <string.h>
 #include "mips_asm_header.h"
 
-#define BASE   0x40000000
+#define BASE   0x000000000
 typedef unsigned int MIPS, *MIPS_PTR;
 MB_HDR mb_hdr;		/* Header area */
 MIPS mem[4096];	/* Memory space */
@@ -24,7 +24,7 @@ typedef struct mipsSim
 {
    unsigned int regs[32]; /* sim mips registers */
    //   int simMem[2][32768];  /* sim memory, row 0 -> PC, row 1 -> instruction */
-   int pcValue;   /* program counter */
+   unsigned int pcValue;   /* program counter */
    int *memp;   /* instruction */
    int numOfInstr;   /* number of instructions in program */
    int numOfRWs;  /* number of read and writes in the program */
@@ -42,11 +42,13 @@ int getshift(int n);
 int getimm8(int n);
 int getimm16(int n);
 int geteff(int n, int i);
-void decodeR(int n, int opc, int funct, int i);
-void decodeIJ(int n, int opc,  int i);
+void decodeR(int n, int opc, int funct, int i, MIPS_SIM* sim);
+void decodeIJ(int n, int opc,  int i, MIPS_SIM* sim);
 /* Functs for running simulator */
 int prompt();
 void initProgram();
+int getPC();
+void getInstr(int pc, MIPS_SIM* sim);
 
 /*************************************** MAIN ******************************/
 int main()
@@ -60,8 +62,11 @@ int main()
       if(run == 2)
          run = prompt();   /* prompt user for command */
 
+      printf("PC: %d \n", getPC(sim));   
 
-
+      // get instr
+      // print regs
+      // print #instruct, readn writes
 
    } while(run != 0 && sim->regs[2] != 10);  /* run until user quits or $v0 is 10 */
 
@@ -84,6 +89,57 @@ int prompt()
 }
 
 
+/* Function getPC - returns pc value */
+int getPC(MIPS_SIM* sim)
+{
+   return sim->pcValue;
+}
+
+/* Function getInstr */
+void getInstr(int i, MIPS_SIM* sim)
+{
+   int opc, funct, type;
+
+   if(mem[i/4] == 0)
+   {
+      // todo print for nop *****************************************
+      printf("Instruction: nop \n"
+            "Number of cycles: 2 \n");
+
+      return;
+
+   }
+
+   // printf("Instruction@%08X : %08X\n", i, mem[i/4]); /* print instruction */
+   opc = mem[i/4] >> 26;   /* get opcode */
+   if(opc == 0)            /* check if R type instr */
+   {
+      funct = getFunct(mem[i/4]);
+      decodeR(mem[i/4], opc, funct, i, sim); /* decode R type instruction */
+   }
+   else if(opc != 0)
+   {
+      type = checkIJ(opc);  /* check if J or I type instr */
+      if(type == 0)
+      {
+         /* Instruction was not found */
+         //            printf("Instruction@%08X : %08X is not a valid instruction! \n", i, mem[i/4]);
+      }
+      else
+      {
+         decodeIJ(mem[i/4], opc, i, sim);   /* Decode I or J type instr */
+      }
+   }
+   else        {
+      /* This case should not happen */
+      //        printf("An error occured in decoding instruction! \n");
+   }
+
+
+
+
+}
+
 /* Funct initProgram prompts user for file and reads into a buffer */
 void initProgram()
 {
@@ -96,7 +152,6 @@ void initProgram()
    FILE *fd;               /* points to a file */
    int n;                  /* for reading instructions */
    int memp;
-   int i;
    int opc, type, funct;
    char filename[20];      /* for file name */
    /************************************** I / O ******************************/
@@ -130,35 +185,6 @@ void initProgram()
    fclose(fd);
 
 
-
-
-   for (i = 0; i<memp; i+=4)	/* i contains byte offset addresses */
-   {
-      printf("Instruction@%08X : %08X\n", i, mem[i/4]); /* print instruction */
-      opc = mem[i/4] >> 26;   /* get opcode */
-      if(opc == 0)            /* check if R type instr */
-      {
-         funct = getFunct(mem[i/4]);
-         decodeR(mem[i/4], opc, funct, i); /* decode R type instruction */
-      }
-      else if(opc != 0)
-      {
-         type = checkIJ(opc);  /* check if J or I type instr */
-         if(type == 0)
-         {
-            /* Instruction was not found */
-            printf("Instruction@%08X : %08X is not a valid instruction! \n", i, mem[i/4]);
-         }
-         else
-         {
-            decodeIJ(mem[i/4], opc, i);   /* Decode I or J type instr */
-         }
-      }
-      else        {
-         /* This case should not happen */
-         printf("An error occured in decoding instruction! \n");
-      }
-   }
 
 
 
@@ -234,7 +260,7 @@ int getFunct(int n)
  * DecodeR decodes and prints R type instruction
  * Assumes integer instruction, opcode, function value and PC
  */
-void decodeR(int n, int opc, int funct, int i)
+void decodeR(int n, int opc, int funct, int i, MIPS_SIM* sim) // add struct ptr*
 {
    if(n == 0x000000C)   /* syscall case */
    {
@@ -250,11 +276,24 @@ void decodeR(int n, int opc, int funct, int i)
    }
    else if(funct == 0x21)    /* addu */
    {
-      printf("Instruction: add unsigned, Type: R, Opc: 00000, Funct: 0x21 \n"
-            "reg rs: %s, reg rt: %s, reg rd: %s \n",
+      // todo:
+      // print pc
+      //
+      printf("Instruction: addu \n"
+            "%s, %s, %s \n",
             table[getrs(n)], table[getrt(n)], table[getrd(n)]);
+      // access sim regs
+      // compute value
+      // update sim regs
+      sim->regs[getrd(n)] = sim->regs[getrs(n)] + sim->regs[getrt(n)];
+
       return;
+    printf("Instruction: add, Type: R, Opc: 00000, Funct: 0x20 \n"
+         "reg rs: %s, reg rt: %s, reg rd: %s \n",
+         table[getrs(n)], table[getrt(n)], table[getrd(n)]);
+   return;
    }
+
    else if(funct == 0x22)  /* subtract */
    {
       printf("Instruction: subtract, Type: R, Opc: 00000, Funct: 0x22 \n"
@@ -381,7 +420,7 @@ void decodeR(int n, int opc, int funct, int i)
 /* Function DecodeIJ
  * Decodes and prints I or J type if valid
  */
-void decodeIJ(int n, int opc, int i)
+void decodeIJ(int n, int opc, int i, MIPS_SIM* sim)
 {
    if(opc == 0x02 || opc == 0x03)    /* j or jal  */
    {
