@@ -1,0 +1,42 @@
+ 
+ 
+ may use one sided cheat sheet
+
+Procedures for floating point #s
+2's comp numbers
+negatives, fractional, neg fractional
+
+multicycle datapath diagrams, control signals
+
+at, sp, gp, other regs
+
+big endian left to right
+little endian right to left ( used in our labs
+
+branch and immediates, only uses shift left two comp on diagram
+
+    practice: hex to binary
+             and assembly to binary ( and vise versa )
+        
+        stack implementation, activation record, push, pop etc
+        callee -> saves s regs and a regs
+        caller -> t regs
+        
+        2s comp ( no hidden one ) vs sign magnitude
+        example:
+        0001 -> 1 / 8
+        1110
+        +001
+        =1111 -> -1/8
+        
+        look at a mips program and determine output
+        
+        RISC process vs others      single cycle vs multicycle
+            Von Nuemann        vs   Harvard Architechure
+            One memory component    2 memory components: program and data
+            
+            suedo to bare metal instructions
+        
+        
+        
+      
