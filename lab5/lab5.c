@@ -50,6 +50,7 @@ void initProgram();
 int getPC();
 void getInstr(int pc, MIPS_SIM* sim);
 void printRegs(MIPS_SIM* sim);
+
 /*************************************** MAIN ******************************/
 int main()
 {
@@ -84,7 +85,7 @@ int main()
 
    printf("\n Total instunctions: %d\n", sim->numOfInstr);
    printf(" Total read-write instructions: %d\n", sim->numOfRWs);
-   printf(" Total clock cycles: %d\n", sim->numClock);
+   printf(" Total clock cycles: %d\n\n", sim->numClock);
 
    free(sim);
    return 0;
@@ -209,7 +210,6 @@ int getFunct(int n)
    n &= 0x3F;
    return n;
 }
-
 
 /* Function DecodeR
  * DecodeR decodes and prints R type instruction
@@ -418,6 +418,7 @@ void decodeR(int n, int opc, int funct, int i, MIPS_SIM* sim) // add struct ptr*
       printf("Instruction@%08X : %08X is not a valid instruction! \n", i, n);
    }
 }
+
 /* Function DecodeIJ
  * Decodes and prints I or J type if valid
  */
@@ -669,6 +670,7 @@ int getimm16(int n)
       return n &= 0x0000FFFF;
    }
 }
+
 /*Function geteff returns effective address */
 int geteff(int n, int i)
 {
