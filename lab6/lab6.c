@@ -43,7 +43,6 @@ typedef struct mipsSim
 /* Struct basket for stages fetch and decode */
 typedef struct fdBasket 
 {
-   int fFlag;
    /* out basket */
    int ir;  /* instruction register */
 } FDB;
@@ -52,9 +51,9 @@ typedef struct fdBasket
 typedef struct dexeBasket 
 {
    /* out basket */
-int aReg; /* rs register */
-int bReg; /* rt register */
-int aluOut; /* result from alu computation */
+   int aReg; /* rs register */
+   int bReg; /* rt register */
+   int aluOut; /* result from alu computation */
 
 
    /* in basket */
@@ -72,7 +71,7 @@ typedef struct memWrbBasket
 {
 
    /* out basket */
-int mdr; /* memory data register */
+   int mdr; /* memory data register */
 } MWB;
 
 /* Function Declarations */
@@ -84,7 +83,8 @@ int getrd(int n);
 int getshift(int n);
 int getimm8(int n);
 int getimm16(int n);
-int geteff(int n, int i);
+//int geteff(int n, int i);
+int geteff(MIPS_SIM* sim, FDB* fdBasket);
 void decodeR(int n, int opc, int funct, int i, MIPS_SIM* sim);
 void decodeIJ(int n, int opc,  int i, MIPS_SIM* sim);
 /* Functs for running simulator */
@@ -98,8 +98,8 @@ void printRegs(MIPS_SIM* sim);
 void wrb();  /* write back */  
 void mwr(); /* memory write */
 void exe(); /* execute */
-void d(); /* instruction decode */
-void f();  /* instruction fetch */
+void d(MIPS_SIM* sim, FDB* fdBasket, DEB* dexeBasket); /* instruction decode */
+void f(MIPS_SIM* sim, FDB* fdBasket);  /* instruction fetch */
 
 
 
@@ -121,13 +121,13 @@ int main()
    do
    {
 
-      void wrb();  /* write back */  
-      void mwr(); /* memory write */
-      void exe(); /* execute */
+      wrb();  /* write back */  
+      mwr(); /* memory write */
+      exe(); /* execute */
       if(sim->regs[2] == 10 && mem[(sim->pcValue-4)/4] == 0xC) /* program halts */
          break;
-      void d(); /* instruction decode */
-      void f();  /* instruction fetch */
+      d(sim, fdBasket, dexeBasket); /* instruction decode */
+      f(sim, fdBasket);  /* instruction fetch */
       sim->numClock++;
 
       //      if(run == 2)
@@ -158,30 +158,38 @@ int main()
 }  /* End Main */
 
 /* Functs for 5 multi cycle stages */
-void wrb()  /* write back */  
+void wrb(MIPS_SIM* sim)  /* write back */  
 {
-   return;
+
 }
-void mwr() /* memory write */
+void mwr(MIPS_SIM* sim) /* memory write */
 {
 
-   return;
 }
-void exe() /* execute */
+void exe(MIPS_SIM* sim) /* execute */
 {
 
-   return;
 }
-void d() /* instruction decode */
+void d(MIPS_SIM* sim, FDB* fdBasket, DEB* dexeBasket) /* instruction decode */
 {
+   // need flags!
+   dexeBasket->aReg = sim->regs[getrs(fdBasket->ir)]; /* load source A */
+   dexeBasket->bReg = sim->regs[getrt(fdBasket->ir)]; /* load source B */
+   dexeBasket->aluOut = geteff(sim, fdBasket->ir);    /* get effective address */   
 
-   return;
+
+
+
+
+
 }
-void f()  /* instruction fetch */
+void f(MIPS_SIM* sim, FDB* fdBasket)  /* instruction fetch */
 {
+   // flags ?
+   fdBasket->ir = mem[sim->pcValue/4];   /* load instruction into ir */   
+   sim->numOfInstr++;
+   sim->pcValue += 4;   /* increment pc */
 
-
-   return;
 }
 
 /* Funct sets simulator to default values */
@@ -191,7 +199,7 @@ void simDefault(MIPS_SIM* sim)
    for(i=0; i<32; i++) 
       sim->regs[i] = 0;
    sim->pcValue = BASE; 
-     sim->numClock = 0;
+   sim->numClock = 0;
    sim->numOfInstr= 0;
    sim->numOfRWs = 0;
 
@@ -782,14 +790,24 @@ int getimm16(int n)
    }
 }
 
+//*Function geteff returns effective address */
+//int geteff(int n, int i)
+//{
+//   i += 4;  /* advance PC */
+//   n = getimm16(n); /* get immediate value (might be sign extended) */
+//   n <<= 2;       /* word align the value */
+//   return n + i;  /* add PC to Branch Address */
+//}
+
 /*Function geteff returns effective address */
-int geteff(int n, int i)
+int geteff(MIPS_SIM* sim, FDB* fdBasket)
 {
-   i += 4;  /* advance PC */
-   n = getimm16(n); /* get immediate value (might be sign extended) */
+   int n;
+   n = getimm16(fdBasket->ir); /* get immediate value (might be sign extended) */
    n <<= 2;       /* word align the value */
-   return n + i;  /* add PC to Branch Address */
+   return n + sim->pcValue;  /* add PC to Branch Address */
 }
+
 
 /* Functions get registers and get shift */
 int getrs(int n)
