@@ -17,9 +17,6 @@
 /* Constants */
 
 #define BASE   0x000000000
-#define EMPTY 0 
-#define FULL 1
-#define BUSY 2 
 
 /* Structures */
 typedef unsigned int MIPS, *MIPS_PTR;
@@ -38,6 +35,12 @@ typedef struct mipsSim
    int numOfInstr;   /* number of instructions in program */
    int numOfRWs;  /* number of read and writes in the program */
    int numClock; /* number of clock cycles */
+   int flagF;  /* flags for each stage */
+   int flagD;
+   int flagExe;
+   int flagMem;
+   int flagWb;
+
 
 }  MIPS_SIM;
 /* Struct basket for stages fetch and decode */
@@ -50,6 +53,11 @@ typedef struct fdBasket
 /* basket for stages decode and execute */
 typedef struct dexeBasket 
 {
+ 
+   /* in basket */
+   int ir;
+   
+
    /* out basket */
    int aReg; /* rs register */
    int bReg; /* rt register */
@@ -63,16 +71,26 @@ typedef struct dexeBasket
 /* basket for stages execute and memory */
 typedef struct exeMemBasket 
 {
+    /* in basket */
+   int ir;
+   int aReg; /* rs register */
+   int bReg; /* rt register */
+   int aluOut; /* result from alu computation */
+
+
 
 } EMB;
 
 /* basket for stages memory and write back*/
 typedef struct memWrbBasket 
 {
+   /* in basket */
+   int ir;
 
    /* out basket */
    int mdr; /* memory data register */
 } MWB;
+
 
 /* Function Declarations */
 /* Functs for decoding instructions */
@@ -158,26 +176,38 @@ int main()
 }  /* End Main */
 
 /* Functs for 5 multi cycle stages */
-void wrb(MIPS_SIM* sim)  /* write back */  
+
+void wrb(MIPS_SIM* sim, MWB* memWrtBacBasket)  /* write back */  
 {
 
 }
-void mwr(MIPS_SIM* sim) /* memory write */
+
+void mwr(MIPS_SIM* sim, EMB* exeMemBasket, MWB* memWrtBacBasket) /* memory write */
 {
 
 }
-void exe(MIPS_SIM* sim) /* execute */
+
+void exe(MIPS_SIM* sim, DEB* dexeBasket, EMB* exeMemBasket) /* execute */
 {
 
+
 }
+
 void d(MIPS_SIM* sim, FDB* fdBasket, DEB* dexeBasket) /* instruction decode */
 {
-   // need flags!
+
+   if(sim->flagExe)
+   {
+
+  
+
+   /* out basket */
    dexeBasket->aReg = sim->regs[getrs(fdBasket->ir)]; /* load source A */
    dexeBasket->bReg = sim->regs[getrt(fdBasket->ir)]; /* load source B */
    dexeBasket->aluOut = geteff(sim, fdBasket->ir);    /* get effective address */   
 
-
+   }
+   else return;
 
 
 
@@ -185,10 +215,14 @@ void d(MIPS_SIM* sim, FDB* fdBasket, DEB* dexeBasket) /* instruction decode */
 }
 void f(MIPS_SIM* sim, FDB* fdBasket)  /* instruction fetch */
 {
-   // flags ?
+   if(sim->flagD) 
+   {
+
    fdBasket->ir = mem[sim->pcValue/4];   /* load instruction into ir */   
    sim->numOfInstr++;
    sim->pcValue += 4;   /* increment pc */
+   } 
+   else return;
 
 }
 
@@ -202,6 +236,11 @@ void simDefault(MIPS_SIM* sim)
    sim->numClock = 0;
    sim->numOfInstr= 0;
    sim->numOfRWs = 0;
+   sim->flagF = 1;
+   sim->flagD = 1;
+   sim->flagExe = 0;
+   sim->flagMem = 0;
+   sim->flagWb = 0;
 
 }
 
@@ -250,29 +289,27 @@ int getPC(MIPS_SIM* sim)
 }
 
 /* Function getInstr */
-void getInstr(int i, MIPS_SIM* sim)
+void getInstr(MIPS_SIM* sim)
 {
    int opc, funct;
 
-   if(mem[i/4] == 0)
+   if(mem[sim->pcValue/4] == 0)
    {
       // todo print for nop *****************************************
       printf("Instruction: nop \n"
             " Number of cycles: 2 \n");
-      sim->pcValue += 4;
-      sim->numClock +=4;
       return;
    }
 
    // printf("Instruction@%08X : %08X\n", i, mem[i/4]); /* print instruction */
-   opc = mem[i/4] >> 26;   /* get opcode */
+   opc = mem[sim->pcValue/4] >> 26;   /* get opcode */
    if(opc == 0)            /* check if R type instr */
    {
-      funct = getFunct(mem[i/4]);
-      decodeR(mem[i/4], opc, funct, i, sim); /* decode R type instruction */
+      funct = getFunct(mem[sim->pcValue/4]);
+      decodeR(mem[sim->pcValue/4], opc, funct, i, sim); /* decode R type instruction */
    }
    else
-      decodeIJ(mem[i/4], opc, i, sim);   /* Decode I or J type instr */
+      decodeIJ(mem[sim->pcValue/4], opc, i, sim);   /* Decode I or J type instr */
 }
 
 /* Funct initProgram prompts user for file and reads into a buffer */
@@ -338,8 +375,7 @@ void decodeR(int n, int opc, int funct, int i, MIPS_SIM* sim) // add struct ptr*
 {
    if (funct == 0xC)
    {
-      printf(" Syscall\n");
-      sim->pcValue += 4;
+   //   printf(" Syscall\n");
    }
    else if(funct == 0x20)    /* add */
    {
@@ -347,17 +383,14 @@ void decodeR(int n, int opc, int funct, int i, MIPS_SIM* sim) // add struct ptr*
             table[getrd(n)], table[getrt(n)], table[getrs(n)]);
       sim->regs[getrd(n)] = sim->regs[getrt(n)] + sim->regs[getrs(n)];
       printf(" Number of cycles: 4 \n");
-      sim->pcValue += 4;
-      sim->numClock += 4;
-   }
+
+       }
    else if(funct == 0x21)    /* addu */
    {
       printf(" addu %s, %s, %s \n",
             table[getrd(n)], table[getrt(n)], table[getrs(n)]);
       sim->regs[getrd(n)] = sim->regs[getrs(n)] + sim->regs[getrt(n)];
       printf(" Number of cycles: 4 \n");
-      sim->pcValue += 4;
-      sim->numClock += 4;
    }
    else if(funct == 0x22)  /* subtract */
    {
@@ -365,8 +398,6 @@ void decodeR(int n, int opc, int funct, int i, MIPS_SIM* sim) // add struct ptr*
             table[getrd(n)], table[getrs(n)], table[getrt(n)]);
       sim->regs[getrd(n)] = sim->regs[getrs(n)] - sim->regs[getrt(n)];
       printf(" Number of cycles: 4 \n");
-      sim->pcValue += 4;
-      sim->numClock += 4;
    }
    else if(funct == 0x23) /* subtract unsigned */
    {
@@ -374,8 +405,6 @@ void decodeR(int n, int opc, int funct, int i, MIPS_SIM* sim) // add struct ptr*
             table[getrd(n)], table[getrs(n)], table[getrt(n)]);
       sim->regs[getrd(n)] = sim->regs[getrs(n)] - sim->regs[getrt(n)];
       printf(" Number of cycles: 4 \n");
-      sim->pcValue += 4;
-      sim->numClock += 4;
    }
    else if(funct == 0x24) /* and */
    {
@@ -383,8 +412,6 @@ void decodeR(int n, int opc, int funct, int i, MIPS_SIM* sim) // add struct ptr*
             table[getrd(n)], table[getrs(n)], table[getrt(n)]);
       sim->regs[getrd(n)] = sim->regs[getrs(n)] & sim->regs[getrt(n)];
       printf(" Number of cycles: 4 \n");
-      sim->pcValue += 4;
-      sim->numClock += 4;
    }
    else if(funct == 0x27) /* nor */
    {
@@ -392,8 +419,6 @@ void decodeR(int n, int opc, int funct, int i, MIPS_SIM* sim) // add struct ptr*
             table[getrd(n)], table[getrs(n)], table[getrt(n)]);
       sim->regs[getrd(n)] = ~(sim->regs[getrs(n)] | sim->regs[getrt(n)]);
       printf(" Number of cycles: 4 \n");
-      sim->pcValue += 4;
-      sim->numClock += 4;
    }
    else if(funct == 0x25) /* or */
    {
@@ -401,8 +426,6 @@ void decodeR(int n, int opc, int funct, int i, MIPS_SIM* sim) // add struct ptr*
             table[getrd(n)], table[getrs(n)], table[getrt(n)]);
       sim->regs[getrd(n)] = (sim->regs[getrs(n)] | sim->regs[getrt(n)]);
       printf(" Number of cycles: 4 \n");
-      sim->pcValue += 4;
-      sim->numClock += 4;
    }
    else if(funct == 0x26) /* xor */
    {
@@ -410,8 +433,6 @@ void decodeR(int n, int opc, int funct, int i, MIPS_SIM* sim) // add struct ptr*
             table[getrd(n)], table[getrs(n)], table[getrt(n)]);
       sim->regs[getrd(n)] = (sim->regs[getrs(n)] ^ sim->regs[getrt(n)]);
       printf(" Number of cycles: 4 \n");
-      sim->pcValue += 4;
-      sim->numClock += 4;
    }
    else if(funct == 0x00) /* sll */
    {
@@ -419,16 +440,12 @@ void decodeR(int n, int opc, int funct, int i, MIPS_SIM* sim) // add struct ptr*
             table[getrd(n)], table[getrt(n)], getshift(n));
       sim->regs[getrd(n)] = sim->regs[getrt(n)] << getshift(n);
       printf(" Number of cycles: 4 \n");
-      sim->pcValue += 4;
-      sim->numClock += 4;
    }
    else if(funct == 0x02) /* srl */
    {
       printf(" srl %s, %s, %d \n",
             table[getrd(n)], table[getrt(n)], getshift(n));
       sim->regs[getrd(n)] = (sim->regs[getrt(n)] >> getshift(n));
-      sim->pcValue += 4;
-      sim->numClock += 4;
       printf(" Number of cycles: 4 \n");
    }
    else if(funct == 0x03) /* sra */
@@ -448,8 +465,6 @@ void decodeR(int n, int opc, int funct, int i, MIPS_SIM* sim) // add struct ptr*
       }
       else
          sim->regs[getrd(n)] >>= getshift(n);
-      sim->pcValue += 4;
-      sim->numClock += 4;
       printf(" Number of cycles: 4 \n");
    }
    else if(funct == 0x04) /* sllv */
@@ -457,8 +472,6 @@ void decodeR(int n, int opc, int funct, int i, MIPS_SIM* sim) // add struct ptr*
       printf(" sllv %s, %s, %s \n",
             table[getrd(n)], table[getrt(n)], table[getrs(n)]);
       sim->regs[getrd(n)] = sim->regs[getrt(n)] << sim->regs[getrs(n)];
-      sim->pcValue += 4;
-      sim->numClock += 4;
       printf(" Number of cycles: 4 \n");
    }
    else if(funct == 0x06) /* srlv */
@@ -466,8 +479,6 @@ void decodeR(int n, int opc, int funct, int i, MIPS_SIM* sim) // add struct ptr*
       printf(" srlv %s, %s, %s \n",
             table[getrd(n)], table[getrt(n)], table[getrs(n)]);
       sim->regs[getrd(n)] = (sim->regs[getrt(n)] >> sim->regs[getrs(n)]);
-      sim->pcValue += 4;
-      sim->numClock += 4;
       printf(" Number of cycles: 4 \n");
    }
    else if(funct == 0x07) /* srav */
@@ -487,14 +498,10 @@ void decodeR(int n, int opc, int funct, int i, MIPS_SIM* sim) // add struct ptr*
       }
       else
          sim->regs[getrd(n)] >>= sim->regs[getrs(n)];
-      sim->pcValue += 4;
-      sim->numClock += 4;
       printf(" Number of cycles: 4 \n");
    }
    else if(funct == 0x2A) /* slt */
    {
-      sim->pcValue += 4;
-      sim->numClock += 4;
       printf(" slt %s, %s, %s \n",
             table[getrd(n)], table[getrs(n)], table[getrt(n)]);
       if(sim->regs[getrs(n)] < sim->regs[getrt(n)])
@@ -505,8 +512,6 @@ void decodeR(int n, int opc, int funct, int i, MIPS_SIM* sim) // add struct ptr*
    }
    else if(funct == 0x2B) /* sltu */
    {
-      sim->pcValue += 4;
-      sim->numClock += 4;
       printf(" sltu %s, %s, %s \n",
             table[getrd(n)], table[getrs(n)], table[getrt(n)]);
       if(sim->regs[getrs(n)] < sim->regs[getrt(n)])
@@ -520,13 +525,11 @@ void decodeR(int n, int opc, int funct, int i, MIPS_SIM* sim) // add struct ptr*
    {
       printf(" jr %s \n", table[getrs(n)]);
       sim->pcValue = sim->regs[getrs(n)];
-      sim->numClock += 3;
       printf(" Number of cycles: 3 \n");
    }
    else if(funct == 0x09) /* jalr */
    {
       sim->pcValue += 4; 
-      sim->numClock += 3;
       printf(" jalr %s \n", table[getrs(n)]);
       sim->regs[31] = sim->pcValue; 
       sim->pcValue = sim->regs[getrs(n)];
@@ -558,7 +561,6 @@ void decodeIJ(int n, int opc, int i, MIPS_SIM* sim)
                table[getrt(n)], table[getrs(n)], n);
          sim->pcValue = n;
          printf(" Number of cycles: 3 \n");
-         sim->numClock += 3;
       }
       else
       {
@@ -575,63 +577,49 @@ void decodeIJ(int n, int opc, int i, MIPS_SIM* sim)
       printf(" addi %s, %s, 0x%.8x \n",
             table[getrt(n)], table[getrs(n)], getimm16(n));
       sim->regs[getrt(n)] = sim->regs[getrs(n)] + getimm16(n);
-      sim->pcValue += 4;
       printf(" Number of cycles: 4 \n");
-      sim->numClock += 4;
    }
    else if(opc == 0x09)    /* addiu */
    {
       printf(" addiu %s, %s, 0x%.8x \n",
             table[getrt(n)], table[getrs(n)], getimm16(n));
       sim->regs[getrt(n)] = sim->regs[getrs(n)] + getimm16(n);
-      sim->pcValue += 4;
       printf(" Number of cycles: 4 \n");
-      sim->numClock += 4;
    }
    else if(opc == 0x0C)    /* andi */
    {
       printf(" andi %s, %s, 0x%.8x \n ",
             table[getrt(n)], table[getrs(n)], n & 0X0000FFFF);
       sim->regs[getrt(n)] = sim->regs[getrs(n)] & (n & 0x0000FFFF);
-      sim->pcValue += 4;
       printf(" Number of cycles: 4 \n");
-      sim->numClock += 4;
    }
    else if(opc == 0x0D)    /* ori */
    {
       printf(" ori %s, %s 0x%.8x \n",
             table[getrt(n)], table[getrs(n)], n & 0X0000FFFF);
       sim->regs[getrt(n)] = sim->regs[getrs(n)] | (n & 0x0000FFFF);
-      sim->pcValue += 4;
       printf(" Number of cycles: 4 \n");
-      sim->numClock += 4;
    }
    else if(opc == 0x0E)    /* xori */
    {
       printf(" xori %s, %s, 0x%.8x \n",
             table[getrt(n)], table[getrs(n)], n & 0X0000FFFF);
       sim->regs[getrt(n)] = sim->regs[getrs(n)] ^ (n & 0x0000FFFF);
-      sim->pcValue += 4;
       printf(" Number of cycles: 4 \n");
-      sim->numClock += 4;
    }
    else if(opc == 0x0A)    /* slti */
    {
       printf(" slti %s, %s, 0x%.8x \n",
             table[getrt(n)], table[getrs(n)], getimm16(n));
       sim->regs[getrt(n)] = sim->regs[getrs(n)] < (n & 0x0000FFFF) ? 1 : 0;
-      sim->pcValue += 4;
       printf(" Number of cycles: 4 \n");
-      sim->numClock += 4;
    }
    else if(opc == 0x0B)    /* sltiu */
    {
       printf(" sltiu %s, %s, 0x%.8x \n",
             table[getrt(n)], table[getrs(n)], getimm16(n));
       sim->regs[getrt(n)] = sim->regs[getrs(n)] < (n & 0x0000FFFF) ? 1 : 0;
-      sim->pcValue += 4;
       printf(" Number of cycles: 4 \n");
-      sim->numClock += 4;
    }
    else if(opc == 0x04)    /* beq */
    {
@@ -640,9 +628,7 @@ void decodeIJ(int n, int opc, int i, MIPS_SIM* sim)
       if (sim->regs[getrt(n)] == sim->regs[getrs(n)])
          sim->pcValue = geteff(n,i);
       else
-         sim->pcValue += 4 ;
       printf(" Number of cycles: 3 \n");
-      sim->numClock += 3;
    }
    else if(opc == 0x05)    /* bne */
    {
@@ -651,9 +637,7 @@ void decodeIJ(int n, int opc, int i, MIPS_SIM* sim)
       if (sim->regs[getrt(n)] != sim->regs[getrs(n)])
          sim->pcValue = geteff(n,i);
       else
-         sim->pcValue += 4;
       printf(" Number of cycles: 3 \n");
-      sim->numClock += 3;
    }
    else if(opc == 0x20)    /* lb */
    {
@@ -662,10 +646,8 @@ void decodeIJ(int n, int opc, int i, MIPS_SIM* sim)
       sim->regs[getrt(n)] = mem[(sim->regs[getrs(n)] + getimm8(n))/4];
       if ((sim->regs[getrt(n)] & 0x00000080) != 0)
          sim->regs[getrt(n)] |= 0xFFFFFF00;
-      sim->pcValue +=4;
       printf(" Number of cycles: 5 \n");
       sim->numOfRWs ++;
-      sim->numClock += 5;
    }
    else if(opc == 0x24)    /* lbu */
    {
@@ -673,10 +655,8 @@ void decodeIJ(int n, int opc, int i, MIPS_SIM* sim)
             table[getrt(n)], table[getrs(n)], n & 0x000000FF);
       sim->regs[getrt(n)] = mem[(sim->regs[getrs(n)] + (n & 0x000000FF))/4];
       sim->regs[getrt(n)] &= 0x000000FF;
-      sim->pcValue += 4;
       printf(" Number of cycles: 5 \n");
       sim->numOfRWs ++;
-      sim->numClock += 5;
    }
    else if(opc == 0x21)    /* lh */
    {
@@ -685,10 +665,8 @@ void decodeIJ(int n, int opc, int i, MIPS_SIM* sim)
       sim->regs[getrt(n)] = mem[(sim->regs[getrs(n)] + getimm16(n))/4];
       sim->regs[getrt(n)] <<= 16;
       sim->regs[getrt(n)] >>= 16;
-      sim->pcValue += 4;
       printf(" Number of cycles: 5 \n");
       sim->numOfRWs ++;
-      sim->numClock += 5;
    }
    else if(opc == 0x21)    /* lhu */
    {
@@ -696,30 +674,24 @@ void decodeIJ(int n, int opc, int i, MIPS_SIM* sim)
             table[getrt(n)], table[getrs(n)], n & 0x0000FFFF);
       sim->regs[getrt(n)] = mem[(sim->regs[getrs(n)] + (n & 0x0000FFFF))/4];
       sim->regs[getrt(n)] &= 0x0000FFFF;
-      sim->pcValue += 4;
       printf(" Number of cycles: 5 \n");
       sim->numOfRWs ++;
-      sim->numClock += 5;
    }
    else if(opc == 0x0F)    /* lui */
    {
       printf(" lui %s, 0x%.8x \n",
             table[getrt(n)], getimm16(n));
       sim->regs[getrt(n)] = n << 16;
-      sim->pcValue += 4;
       printf(" Number of cycles: 5 \n");
       sim->numOfRWs ++;
-      sim->numClock += 5;
    }
    else if(opc == 0x23)    /* lw */
    {
       printf(" lw %s, %s,0x%.8x \n",
             table[getrs(n)], table[getrt(n)], getimm16(n));
       sim->regs[getrt(n)] = mem[(sim->regs[getrs(n)] + getimm16(n))/4];
-      sim->pcValue += 4;
       printf(" Number of cycles: 5 \n");
       sim->numOfRWs ++;
-      sim->numClock += 5;
    }
    else if(opc == 0x28)    /* sb */
    {
@@ -727,10 +699,8 @@ void decodeIJ(int n, int opc, int i, MIPS_SIM* sim)
             table[getrt(n)], getimm8(n), table[getrs(n)]);
       mem[(getimm8(n) + sim->regs[getrs(n)])/4] = sim->regs[getrt(n)];
       mem[(getimm8(n) + sim->regs[getrs(n)])/4]&= 0x000000FF;
-      sim->pcValue += 4;
       printf(" Number of cycles: 4 \n");
       sim->numOfRWs ++;
-      sim->numClock += 4;
    }
    else if(opc == 0x29)    /* sh */
    {
@@ -738,20 +708,16 @@ void decodeIJ(int n, int opc, int i, MIPS_SIM* sim)
             table[getrt(n)], getimm16(n), table[getrs(n)]);
       mem[(getimm16(n) + sim->regs[getrs(n)])/4] = sim->regs[getrt(n)];
       mem[(getimm16(n) + sim->regs[getrs(n)])/4] &= 0x0000FFFF;
-      sim->pcValue += 4;
       printf(" Number of cycles: 4 \n");
       sim->numOfRWs ++;
-      sim->numClock += 4;
    }
    else if(opc == 0x2B)    /* sw */
    {
       printf(" lw %s, 0x%.8x (%s) \n",
             table[getrt(n)], getimm16(n), table[getrs(n)]);
       mem[(getimm16(n) + sim->regs[getrs(n)])/4] = sim->regs[getrt(n)];
-      sim->pcValue += 4;
       printf(" Number of cycles: 4 \n");
       sim->numOfRWs ++;
-      sim->numClock += 4;
    }
    else
    {
