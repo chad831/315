@@ -95,8 +95,7 @@ int getrd(int n);
 int getshift(int n);
 int getimm8(int n);
 int getimm16(int n);
-//int geteff(int n, int i);
-int geteff(MIPS_SIM* sim, FDB* fdBasket);
+int geteff(int n, int i);
 void procR(MIPS_SIM* sim, DEB* deBasket, MWB* mwBasket);
 void procI(MIPS_SIM* sim, DEB* deBasket, MWB* mwBbasket);
 /* Functs for running simulator */
@@ -144,7 +143,6 @@ int main()
       f(sim, fdBasket);  /* instruction fetch */
       sim->numClock++;
 
-
    } while(1);  /* run until user quits or $v0 is 10 */
 
    printf("\n Total instunctions: %d\n", sim->numOfInstr);
@@ -181,7 +179,8 @@ void wb(MIPS_SIM* sim, MWB* mwBasket)  /* write back */
 
          case 2: /* Load Word */
 
-            sim->regs[mwBasket->bReg] = mwBasket->mdr;
+            if(mwBasket->mdr != 0)          
+               sim->regs[mwBasket->bReg] = mwBasket->mdr;
             break;
       }
       clearmw(mwBasket);
@@ -192,9 +191,6 @@ void wb(MIPS_SIM* sim, MWB* mwBasket)  /* write back */
 }
 void m(MIPS_SIM* sim, EMB* emBasket, MWB* mwBasket) /* memory write */
 {
-   //      mem[(getimm8(n) + sim->regs[getrs(n)])/4] = sim->regs[getrt(n)];
-   //     mem[(getimm8(n) + sim->regs[getrs(n)])/4]&= 0x000000FF;
-
    if(emBasket->aluOut != 0)
    {
       int opc = emBasket->ir >> 26;
@@ -227,7 +223,7 @@ void m(MIPS_SIM* sim, EMB* emBasket, MWB* mwBasket) /* memory write */
          {
             mwBasket->wBusy = 1;
             mwBasket->type = 2;
-            mwBasket->mdr = mem[emBasket->aluOut];
+            mwBasket->mdr = mem[emBasket->aluOut]; /* write to mdr */
             clearem(emBasket);
          }
       }
@@ -248,71 +244,44 @@ void exe(MIPS_SIM* sim, FDB* fdBasket, DEB* deBasket, EMB* emBasket, MWB* mwBask
       switch (value)
       {
          int opc = deBasket->ir >> 26;
-         // Execute Jump or Branch Type   // clear everything if taken
+         // Execute Jump or Branch Type  *********************************************** 
          case 0:
 
          if(opc == 0x02) /* Jump */
          {  
-            sim->pcValue = deBasket->ir;
-            //basketDefault(
-
+            sim->pcValue = deBasket->ir;  /* set new PC value from IR */
+            basketDefault(fdBasket, deBasket, emBasket, mwBasket);   /* clear baskets */
          }
          else if(opc == 0x03) /* Jump and Link */
          {
 
-
+            sim->regs[31] = sim->pcValue; /* store ra */       // does this need to be pc + 4 ????
+            sim->pcValue = deBasket->ir;  /* set new PC value from IR */
+            basketDefault(fdBasket, deBasket, emBasket, mwBasket);   /* clear baskets */
 
          }
          else if(opc == 0x04) /* Branch on Equal */
          {
-
+            if(deBasket->bReg == deBasket->aReg)   /* compares registers */
+            {
+               sim->pcValue = geteff(deBasket->ir, sim->pcValue); /* if equal set effective address */
+               basketDefault(fdBasket, deBasket, emBasket, mwBasket);   /* clear baskets */
+            }
+               else return;
          }
          else  /* Branch not equal */
          {
-
+           if(deBasket->bReg != deBasket->aReg)   /* compares registers */
+           {
+               sim->pcValue = geteff(deBasket->ir, sim->pcValue); /* if not equal set effective address */
+               basketDefault(fdBasket, deBasket, emBasket, mwBasket);   /* clear baskets */
+           }
+            else return;
          }
-
-
-         //      if(opc == 0x02)
-         //      {
-         //         printf(" j %s, %s, 0x%.8x \n",
-         //               table[getrt(n)], table[getrs(n)], n);
-         //         sim->pcValue = n;
-         //         printf(" Number of cycles: 3 \n");
-         //      }
-         //      else
-         //      {
-         //         printf(" jal %s, %s, 0x%.8x \n",
-         //               table[getrt(n)], table[getrs(n)], n);
-         //         sim->regs[31] = sim->pcValue + 4;
-         //         sim->pcValue = n;
-         //         printf(" Number of cycles: 3 \n");
-         //         sim->numClock += 3;
-         //      }
-         //
-         //
-         //else if(opc == 0x04)    /* beq */
-         //   {
-         //      printf(" beq %s, %s, 0x%.8x \n",
-         //            table[getrt(n)], table[getrs(n)], geteff(n, i));
-         //      if (sim->regs[getrt(n)] == sim->regs[getrs(n)])           //////////// condtional add this
-         //         sim->pcValue = geteff(n,i);
-         //      else
-         //         printf(" Number of cycles: 3 \n");
-         //   }
-         //   else if(opc == 0x05)    /* bne */
-         //   {
-         //      printf(" bne %s, %s, 0x%.8x \n",
-         //            table[getrt(n)], table[getrs(n)], geteff(n, i));    //// conditional
-         //      if (sim->regs[getrt(n)] != sim->regs[getrs(n)])
-         //         sim->pcValue = geteff(n,i);
-         //      else
-         //         printf(" Number of cycles: 3 \n");
-         //   }
 
          break;
 
-         // Execute R Type Instuctrion
+         // Execute R Type Instuctrion **********************************************
          case 1:
          if(mwBasket->wBusy)
             return;
@@ -337,7 +306,6 @@ void exe(MIPS_SIM* sim, FDB* fdBasket, DEB* deBasket, EMB* emBasket, MWB* mwBask
 
             if(opc == 0x28)    /* sb */
             {
-
                emBasket->mBusy = 1;
                emBasket->ir = deBasket->ir;
                emBasket->bReg = deBasket->bReg;
@@ -346,7 +314,6 @@ void exe(MIPS_SIM* sim, FDB* fdBasket, DEB* deBasket, EMB* emBasket, MWB* mwBask
             }
             else if(opc == 0x29)    /* sh */
             {
-
                emBasket->mBusy = 1;
                emBasket->ir = deBasket->ir;
                emBasket->bReg = deBasket->bReg;
@@ -354,7 +321,6 @@ void exe(MIPS_SIM* sim, FDB* fdBasket, DEB* deBasket, EMB* emBasket, MWB* mwBask
             }
             else if(opc == 0x2B)    /* sw */
             {
-
                emBasket->mBusy = 1;
                emBasket->ir = deBasket->ir;
                emBasket->bReg = deBasket->bReg;
@@ -366,7 +332,7 @@ void exe(MIPS_SIM* sim, FDB* fdBasket, DEB* deBasket, EMB* emBasket, MWB* mwBask
          }
          break;
 
-         // Execute Load type
+         // Execute Load type ***********************************
          case 3:
 
          if(opc == 0x0F)    /* lui */
@@ -380,73 +346,46 @@ void exe(MIPS_SIM* sim, FDB* fdBasket, DEB* deBasket, EMB* emBasket, MWB* mwBask
                mwBasket->ir = deBasket->ir;
                mwBasket->bReg = deBasket->bReg;
                mwBasket->aluOut = deBasket->ir << 16;
-
                procI(sim, deBasket, mwBasket);
-
                clearde(deBasket);
             }
-
-
-
             sim->regs[deBasket->bReg] = deBasket->ir << 16;
-            //               sim->regs[getrt(n)] = n << 16;
+
          }
 
          emBasket->mBusy = 1;
          mwBasket->type = 2;
          emBasket->ir = deBasket->ir;
 
-         if(opc == 0x20)    /* lb */
+         if(opc == 0x20)    /* lb */         //////////////////////////////////////// double check your loads
          {
             emBasket->aluOut = deBasket->aReg + getimm8(deBasket->ir)/4;
-
-            //               sim->regs[getrt(n)] = mem[(sim->regs[getrs(n)] + getimm8(n))/4];
-            //               if ((sim->regs[getrt(n)] & 0x00000080) != 0)
-            //                  sim->regs[getrt(n)] |= 0xFFFFFF00;
-
          }
 
          else if(opc == 0x24)    /* lbu */
          {
-
             emBasket->aluOut = deBasket->aReg + getimm8(deBasket->ir)/4;
-
-            //   emBasket->aluOut = deBasket->aReg + (deBasket->ir & 0x000000FF)/4;
-            //  emBasket->aluOut &= 0x000000FF;
-
-            //               sim->regs[getrt(n)] = mem[(sim->regs[getrs(n)] + (n & 0x000000FF))/4];
-            //               sim->regs[getrt(n)] &= 0x000000FF;
-         }
+        }
          else if(opc == 0x21)    /* lh */
          {
-
             emBasket->aluOut = deBasket->aReg + getimm16(deBasket->ir)/4;
-            //               emBasket->aluOut = deBasket->aReg + (deBasket->ir & 0x0000FFFF)/4;
-
-            //               sim->regs[getrt(n)] = mem[(sim->regs[getrs(n)] + getimm16(n))/4];
-            //               sim->regs[getrt(n)] <<= 16;
-            //               sim->regs[getrt(n)] >>= 16;
-         }
+        }
          else if(opc == 0x21)    /* lhu */
          {
-
-
+            emBasket->aluOut = mem[deBasket->aReg] + getimm16(deBasket->ir)/4;
             // sim->regs[getrt(n)] = mem[(sim->regs[getrs(n)] + (n & 0x0000FFFF))/4];
-            // sim->regs[getrt(n)] &= 0x0000FFFF;
+            // sim->regs[getrt(n)] &= 0x0000FFFF; *************************** when does this happend????
          }
          else if(opc == 0x23)    /* lw */
          {
-
             emBasket->aluOut = deBasket->aReg + getimm16(deBasket->ir)/4;
-
-            // sim->regs[getrt(n)] = mem[(sim->regs[getrs(n)] + getimm16(n))/4];
          }
 
          sim->numOfRWs ++;
          clearde(deBasket);
 
          break;
-         // Process I Type Instuctrion
+         // Process I Type Instuctrion ***************************************
          case 4:
          if(mwBasket->wBusy)
             return;
@@ -456,13 +395,10 @@ void exe(MIPS_SIM* sim, FDB* fdBasket, DEB* deBasket, EMB* emBasket, MWB* mwBask
             mwBasket->type = 1;
             mwBasket->ir = deBasket->ir;
             procI(sim, deBasket, mwBasket);
-
             clearde(deBasket);
          }
 
-
          break;
-
       }
    }
 }
@@ -478,12 +414,11 @@ void d(MIPS_SIM* sim, FDB* fdBasket, DEB* deBasket) /* instruction decode */
       deBasket->ir = fdBasket->ir; /* pass ir */
       deBasket->aReg = sim->regs[getrs(fdBasket->ir)]; /* load source A */
       deBasket->bReg = sim->regs[getrt(fdBasket->ir)]; /* load source B */
-      deBasket->aluOut = geteff(sim, fdBasket);    /* get effective address */   
+      deBasket->aluOut = geteff(fdBasket->ir, sim->pcValue);    /* get effective address */   
       deBasket->eBusy = 1;
-      
+
       clearfd(fdBasket);
    }
-
 }
 
 void f(MIPS_SIM* sim, FDB* fdBasket)  /* instruction fetch */
@@ -628,48 +563,45 @@ void procR(MIPS_SIM* sim, DEB* deBasket, MWB* mwBasket)
    {
       mwBasket->aluOut  =  deBasket->bReg >> getshift(deBasket->ir);
    }
-
-   else if(funct == 0x03) /* sra */                                        /// sra will need changed 
+   else if(funct == 0x03) /* sra */                                        
    {
-//      int temp = 0x80000000, i=0;
-//      sim->regs[getrd(de)] = sim->regs[getrt(n)];
-//      if ((sim->regs[getrt(n)] & temp) != 0)
-//      {
-//         while (i < getshift(n))
-//         {
-//            sim->regs[getrd(n)] >>= 1;
-//            sim->regs[getrd(n)] += temp;
-//            i++;
-//         }
-//      }
-//      else
-//         sim->regs[getrd(n)] >>= getshift(n);
+            int temp = 0x80000000, i=0;
+            mwBasket->aluOut = deBasket->bReg;
+            if ((deBasket->bReg & temp) != 0)
+            {
+               while (i < getshift(deBasket->ir))
+               {
+                  mwBasket->aluOut >>= 1;
+                  mwBasket->aluOut += temp;
+                  i++;
+               }
+            }
+            else
+               mwBasket->aluOut >>= getshift(deBasket->ir);
    }
    else if(funct == 0x04) /* sllv */
    {
       mwBasket->aluOut = deBasket->bReg << deBasket->aReg; 
-
    }
    else if(funct == 0x06) /* srlv */
    {
       mwBasket->aluOut  = deBasket->bReg >> deBasket->aReg; 
-
    }
-   else if(funct == 0x07) /* srav */                                          /// srav will need changed
+   else if(funct == 0x07) /* srav */                                          
    {
-//      int temp = 0x80000000, i=0;
-//      sim->regs[getrd(n)] = sim->regs[getrt(n)];
-//      if ((sim->regs[getrt(n)] & temp) != 0)
-//      {
-//         while (i < sim->regs[getrs(n)])
-//         {
-//            sim->regs[getrd(n)] >>= 1;
-//            sim->regs[getrd(n)] += temp;
-//            i++;
-//         }
-//      }
-//      else
-//         sim->regs[getrd(n)] >>= sim->regs[getrs(n)];
+            int temp = 0x80000000, i=0;
+            mwBasket->aluOut = deBasket->bReg;
+            if ((deBasket->bReg & temp) != 0)
+            {
+               while (i < deBasket->aReg)
+               {
+                  mwBasket->aluOut >>= 1;
+                  mwBasket->aluOut += temp;
+                  i++;
+               }
+            }
+            else
+               mwBasket->aluOut >>= deBasket->aReg;
    }
    else if(funct == 0x2A) /* slt */
    {
@@ -687,16 +619,16 @@ void procR(MIPS_SIM* sim, DEB* deBasket, MWB* mwBasket)
          mwBasket->aluOut = 0;
 
    }
-   else if(funct == 0x08) /* jump register */               // R type jumps?????????
+   else if(funct == 0x08) /* jump register */               /////////////////////////////////////// R type jumps?????????
    {
       //sim->pcValue = sim->regs[getrs(n)];
-//      sim->pcValue = sim->regs[getrs(n)];
+      //      sim->pcValue = sim->regs[getrs(n)];
    }
    else if(funct == 0x09) /* jalr */
    {
       sim->pcValue += 4; 
       sim->regs[31] = sim->pcValue; 
- //     sim->pcValue = sim->regs[getrs(n)];
+      //     sim->pcValue = sim->regs[getrs(n)];
    }
    else
    {
@@ -800,12 +732,12 @@ int getimm16(int n)
 }
 
 /*Function geteff returns effective address */
-int geteff(MIPS_SIM* sim, FDB* fdBasket)
+int geteff(int n, int i)
 {
-   int n;
-   n = getimm16(fdBasket->ir); /* get immediate value (might be sign extended) */
-   n <<= 2;       /* word align the value */
-   return n + sim->pcValue;  /* add PC to Branch Address */
+   int t;
+   t = getimm16(n); /* get immediate value (might be sign extended) */
+   t <<= 2;       /* word align the value */
+   return t + i;  /* add PC to Branch Address */
 }
 
 /* Functions get registers and get shift */
