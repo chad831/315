@@ -84,8 +84,6 @@ typedef struct mwBasket
 
 } MWB;
 
-
-
 /* Function Declarations */
 /* Functs for decoding instructions */
 int getFunct(int n);
@@ -111,19 +109,21 @@ int getPC();
 int getInstr(MIPS_SIM* sim, DEB* deBasket);
 void printRegs(MIPS_SIM* sim);
 /* Functs for 5 multi cycle stages */
-void wb(MIPS_SIM* sim, MWB* mwBasket);  /* write back */  
+void wb(MIPS_SIM* sim, FDB* fdBasket, DEB* deBasket, EMB* emBasket, MWB* mwBasket);  /* write back */  
 void m(MIPS_SIM* sim, EMB* emBasket, MWB* mwBasket); /* memory write */
 void exe(MIPS_SIM* sim, FDB* fdBasket, DEB* deBasket, EMB* emBasket, MWB* mwBasket); /* execute */
 void d(MIPS_SIM* sim, FDB* fdBasket, DEB* deBasket); /* instruction decode */
 void f(MIPS_SIM* sim, FDB* fdBasket);  /* instruction fetch */
 
+
+int count = 0;
 /*************************************** MAIN ******************************/
 int main()
 {
 
    MIPS_SIM* sim = malloc(sizeof(MIPS_SIM)); /* init sim structure */
    simDefault(sim); /* set default values */
-   FDB* fdBasket = malloc(sizeof(FDB));
+   FDB* fdBasket = malloc(sizeof(FDB)); /* init Baskets */
    DEB* deBasket = malloc(sizeof(DEB));
    EMB* emBasket = malloc(sizeof(EMB));
    MWB* mwBasket = malloc(sizeof(MWB));
@@ -134,21 +134,23 @@ int main()
    do
    {
 
-      wb(sim, mwBasket);  /* write back */  
+      wb(sim, fdBasket, deBasket, emBasket, mwBasket);  /* write back */  
       m(sim, emBasket, mwBasket); /* memory write */
       exe(sim, fdBasket, deBasket, emBasket, mwBasket); /* execute */
-      if(sim->regs[2] == 10 && mem[(sim->pcValue-4)/4] == 0xC) /* program halts */
+      if(sim->regs[2] == 10 && mem[(sim->pcValue-4)/4] == 0xC) /* program finished */
          break;
       d(sim, fdBasket, deBasket); /* instruction decode */
       f(sim, fdBasket);  /* instruction fetch */
-      sim->numClock++;
+      sim->numClock++; 
 
-   } while(1);  /* run until user quits or $v0 is 10 */
+      count++;
+   } while(0);  /* run until user quits or $v0 is 10 */
 
    printf("\n Total instunctions: %d\n", sim->numOfInstr);
    printf(" Total read-write instructions: %d\n", sim->numOfRWs);
    printf(" Total clock cycles: %d\n\n", sim->numClock);
 
+   printf("\n count: %d\n", count);
    free(sim);
    free(fdBasket);
    free(deBasket);
@@ -161,24 +163,43 @@ int main()
 /* Functs for 5 multi cycle stages */
 
 /* Funct wb, stage five, assumes the mwBasket */
-void wb(MIPS_SIM* sim, MWB* mwBasket)  /* write back */  
+void wb(MIPS_SIM* sim, FDB* fdBasket, DEB* deBasket, EMB* emBasket, MWB* mwBasket) 
 {
    /* Check in Basket */
    if(mwBasket->mdr != 0 || mwBasket->aluOut != 0)
    {
+            int funct = getFunct(mwBasket->ir);
       switch (mwBasket->type)
       {
          case 0: /* R type */
-            sim->regs[getrd(mwBasket->ir)] = mwBasket->aluOut;
+            // need two jumps else
+
+   printf("in wb: exe jump type\n");
+            if(funct == 0x08) /* jr */
+            {
+               sim->pcValue = sim->regs[mwBasket->aluOut]; 
+               basketDefault(fdBasket, deBasket, emBasket, mwBasket);
+            }
+            else if(funct == 0x09)
+            {
+   printf("in wb: exe jump type\n");
+               sim->regs[31] = sim->pcValue;
+               sim->pcValue = sim->regs[mwBasket->aluOut];
+               basketDefault(fdBasket, deBasket, emBasket, mwBasket);
+            }
+            else
+               sim->regs[getrd(mwBasket->ir)] = mwBasket->aluOut;
             break;
 
          case 1: /* I type */
 
+   printf("in wb: exe I type\n");
             sim->regs[mwBasket->bReg] = mwBasket->aluOut;
             break;
 
          case 2: /* Load Word */
 
+   printf("in wb: exe lw type\n");
             if(mwBasket->mdr != 0)          
                sim->regs[mwBasket->bReg] = mwBasket->mdr;
             break;
@@ -189,6 +210,7 @@ void wb(MIPS_SIM* sim, MWB* mwBasket)  /* write back */
       return;
 
 }
+/* Funct m, stage 4 / Memory, assumes the em and mw Baskets */
 void m(MIPS_SIM* sim, EMB* emBasket, MWB* mwBasket) /* memory write */
 {
    if(emBasket->aluOut != 0)
@@ -196,6 +218,7 @@ void m(MIPS_SIM* sim, EMB* emBasket, MWB* mwBasket) /* memory write */
       int opc = emBasket->ir >> 26;
       if(isStore(opc))  /* For Store Word Insturctions */
       {
+   printf("in m: exe store type\n");
          switch(opc)
          {
             case 0x28: /* store byte */
@@ -221,6 +244,7 @@ void m(MIPS_SIM* sim, EMB* emBasket, MWB* mwBasket) /* memory write */
             return;
          else
          {
+   printf("in m: exe load type\n");
             mwBasket->wBusy = 1;
             mwBasket->type = 2;
             mwBasket->mdr = mem[emBasket->aluOut]; /* write to mdr */
@@ -231,18 +255,19 @@ void m(MIPS_SIM* sim, EMB* emBasket, MWB* mwBasket) /* memory write */
    else
       return;
 }
-
+/* Funct exe, stage 3 / Execute, assumes the de, em, and mw Baskets */
 void exe(MIPS_SIM* sim, FDB* fdBasket, DEB* deBasket, EMB* emBasket, MWB* mwBasket) 
 {
-   // four cases: J and Branch (0), R type (1), store word (2), load word (3), I type (4)
-
+   printf("in d\n");
+   /* four cases: J and Branch (0), R type (1), store word (2), load word (3), I type (4) */
    if(deBasket->ir != 0)
    {
-
       int value;
-      value = getInstr(sim, deBasket);
+      value = getInstr(sim, deBasket); /* Select Instruction Type */
+   printf("exe d\n");
       switch (value)
       {
+   printf("case 0: in j or beq type\n");
          int opc = deBasket->ir >> 26;
          // Execute Jump or Branch Type  *********************************************** 
          case 0:
@@ -254,7 +279,6 @@ void exe(MIPS_SIM* sim, FDB* fdBasket, DEB* deBasket, EMB* emBasket, MWB* mwBask
          }
          else if(opc == 0x03) /* Jump and Link */
          {
-
             sim->regs[31] = sim->pcValue; /* store ra */       // does this need to be pc + 4 ????
             sim->pcValue = deBasket->ir;  /* set new PC value from IR */
             basketDefault(fdBasket, deBasket, emBasket, mwBasket);   /* clear baskets */
@@ -287,6 +311,7 @@ void exe(MIPS_SIM* sim, FDB* fdBasket, DEB* deBasket, EMB* emBasket, MWB* mwBask
             return;
          else
          {
+   printf("case 1: in R type\n");
             /* update in / out baskets */
             mwBasket->wBusy = 1;
             mwBasket->type = 0;
@@ -303,7 +328,6 @@ void exe(MIPS_SIM* sim, FDB* fdBasket, DEB* deBasket, EMB* emBasket, MWB* mwBask
             return;
          else
          {
-
             if(opc == 0x28)    /* sb */
             {
                emBasket->mBusy = 1;
@@ -335,7 +359,8 @@ void exe(MIPS_SIM* sim, FDB* fdBasket, DEB* deBasket, EMB* emBasket, MWB* mwBask
          // Execute Load type ***********************************
          case 3:
 
-         if(opc == 0x0F)    /* lui */
+   printf("case 3: in R type\n");
+         if(opc == 0x0F)    /* lui */             
          {
             if(mwBasket->wBusy)
                return;
@@ -357,7 +382,7 @@ void exe(MIPS_SIM* sim, FDB* fdBasket, DEB* deBasket, EMB* emBasket, MWB* mwBask
          mwBasket->type = 2;
          emBasket->ir = deBasket->ir;
 
-         if(opc == 0x20)    /* lb */         //////////////////////////////////////// double check your loads
+         else if(opc == 0x20)    /* lb */      /// double check your loads
          {
             emBasket->aluOut = deBasket->aReg + getimm8(deBasket->ir)/4;
          }
@@ -373,6 +398,7 @@ void exe(MIPS_SIM* sim, FDB* fdBasket, DEB* deBasket, EMB* emBasket, MWB* mwBask
          else if(opc == 0x21)    /* lhu */
          {
             emBasket->aluOut = mem[deBasket->aReg] + getimm16(deBasket->ir)/4;
+            emBasket->aluOut &= 0x0000FFFF;
             // sim->regs[getrt(n)] = mem[(sim->regs[getrs(n)] + (n & 0x0000FFFF))/4];
             // sim->regs[getrt(n)] &= 0x0000FFFF; *************************** when does this happend????
          }
@@ -391,6 +417,7 @@ void exe(MIPS_SIM* sim, FDB* fdBasket, DEB* deBasket, EMB* emBasket, MWB* mwBask
             return;
          else
          {  
+   printf("case 4: in I type\n");
             mwBasket->wBusy = 1;
             mwBasket->type = 1;
             mwBasket->ir = deBasket->ir;
@@ -402,15 +429,17 @@ void exe(MIPS_SIM* sim, FDB* fdBasket, DEB* deBasket, EMB* emBasket, MWB* mwBask
       }
    }
 }
-
+/* Funct d, stage 2 / decode, assumes the fd, de Baskets */
 void d(MIPS_SIM* sim, FDB* fdBasket, DEB* deBasket) /* instruction decode */
 {
+   printf("in d\n");
 
    if(fdBasket->ir == 0) return; /* No Op - Special case */
    if(deBasket->eBusy) /* If next stage is busy return */
       return;
    else
    {
+   printf("exe d\n");
       deBasket->ir = fdBasket->ir; /* pass ir */
       deBasket->aReg = sim->regs[getrs(fdBasket->ir)]; /* load source A */
       deBasket->bReg = sim->regs[getrt(fdBasket->ir)]; /* load source B */
@@ -420,21 +449,21 @@ void d(MIPS_SIM* sim, FDB* fdBasket, DEB* deBasket) /* instruction decode */
       clearfd(fdBasket);
    }
 }
-
+/* Funct f, stage 1 / fetch, assumes the fd Baskets */
 void f(MIPS_SIM* sim, FDB* fdBasket)  /* instruction fetch */
 {
-
+   printf("in f\n");
    if(fdBasket->dBusy)  
       return;
    else
    {
+   printf("exe f\n");
       fdBasket->ir = mem[sim->pcValue/4];   /* load instruction into ir */   
       sim->numOfInstr++;
       sim->pcValue += 4;   /* increment pc */
       fdBasket->dBusy = 1;
 
    } 
-
 }
 /* Function getPC - returns pc value */
 int getPC(MIPS_SIM* sim)
@@ -619,16 +648,14 @@ void procR(MIPS_SIM* sim, DEB* deBasket, MWB* mwBasket)
          mwBasket->aluOut = 0;
 
    }
-   else if(funct == 0x08) /* jump register */               /////////////////////////////////////// R type jumps?????????
+   else if(funct == 0x08) /* jump register */               
    {
-      //sim->pcValue = sim->regs[getrs(n)];
-      //      sim->pcValue = sim->regs[getrs(n)];
+      mwBasket->aluOut = deBasket->aReg;
    }
    else if(funct == 0x09) /* jalr */
    {
-      sim->pcValue += 4; 
-      sim->regs[31] = sim->pcValue; 
-      //     sim->pcValue = sim->regs[getrs(n)];
+
+      mwBasket->aluOut = deBasket->aReg;
    }
    else
    {
