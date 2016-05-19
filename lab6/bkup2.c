@@ -144,7 +144,7 @@ int main()
       sim->numClock++; 
 
       count++;
-   } while(0);  /* run until user quits or $v0 is 10 */
+   } while(1);  /* run until user quits or $v0 is 10 */
 
    printf("\n Total instunctions: %d\n", sim->numOfInstr);
    printf(" Total read-write instructions: %d\n", sim->numOfRWs);
@@ -382,7 +382,7 @@ void exe(MIPS_SIM* sim, FDB* fdBasket, DEB* deBasket, EMB* emBasket, MWB* mwBask
          mwBasket->type = 2;
          emBasket->ir = deBasket->ir;
 
-         else if(opc == 0x20)    /* lb */      /// double check your loads
+         if(opc == 0x20)    /* lb */      /// double check your loads
          {
             emBasket->aluOut = deBasket->aReg + getimm8(deBasket->ir)/4;
          }
@@ -434,7 +434,7 @@ void d(MIPS_SIM* sim, FDB* fdBasket, DEB* deBasket) /* instruction decode */
 {
    printf("in d\n");
 
-   if(fdBasket->ir == 0) return; /* No Op - Special case */
+   //if(fdBasket->ir == 0) return; /* No Op - Special case */
    if(deBasket->eBusy) /* If next stage is busy return */
       return;
    else
