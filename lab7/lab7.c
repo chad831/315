@@ -1,4 +1,14 @@
-MAX 10			/* Maximum (square) array size */
+
+/*
+ * Nghia Nguyen
+ * Chad Benson
+ *
+ * 315 - Lab7 Cache Simulator
+ *
+ */
+
+
+#define AMAX 10			/* Maximum (square) array size */
 
 #define CACHESIM 0		/* Set to 1 if simulating Cache */
 
@@ -83,7 +93,7 @@ int main()
 
     int *mp1, *mp2, *mp3;
 
-    printf("Size of pointer is: %d\n\n", sizeof(mp1));
+    printf("Size of pointer is: %d\n\n", (int)sizeof(mp1));   // did he want a cast here or ????????????????????????????????????????????????
 
     printf("Enter rows and column for first matrix: ");
     scanf("%d%d", &r1, &c1);
